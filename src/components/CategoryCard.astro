@@ -1,0 +1,66 @@
+---
+// این بخش بالای فایل (سمت سرور) است
+import { supabase } from '../lib/supabase'; // مسیر کلاینت سوپابیس خودت را چک کن
+
+// ۱. گرفتن داده‌ها از سوپابیس
+const { data: categories, error } = await supabase
+  .from('categories')
+  .select('*')
+  .order('display_order', { ascending: true });
+
+if (error) console.error('Error:', error.message);
+---
+
+<div class="category-grid">
+	{categories?.map((cat) => (
+		<a href={`/category/${cat.slug}`} class="cat-card">
+			<div class="icon-box">
+				<i class={`fa-solid ${cat.icon_name || 'fa-folder'}`}></i>
+			</div>
+			<span class="cat-name">{cat.name}</span>
+		</a>
+	))}
+</div>
+
+<style>
+	.category-grid {
+		display: grid;
+		/* ایجاد ۳ ستون مساوی برای موبایل */
+		grid-template-columns: repeat(3, 1fr); 
+		gap: 10px;
+		padding: 0 10px;
+		margin-top: 20px;
+	}
+
+	.cat-card {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 16px;
+		/* تبدیل به مربع کامل */
+		aspect-ratio: 1 / 1; 
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-decoration: none;
+		transition: transform 0.2s ease, border-color 0.2s ease;
+	}
+	
+	.cat-card:hover {
+		transform: translateY(-2px);
+		border-color: var(--primary);
+	}
+
+	.icon-box {
+		font-size: 24px;
+		color: var(--primary);
+		margin-bottom: 8px;
+	}
+	
+	.cat-name {
+		color: var(--text-main);
+		font-size: 11px;
+		font-weight: 800;
+		text-align: center;
+	}
+</style>

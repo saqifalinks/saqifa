@@ -1,0 +1,254 @@
+---
+// Modals.astro
+---
+<div id="modal-overlay" class="modal-overlay">
+  <div id="modal-about" class="modal-card">
+    <div class="modal-body">
+      <h3 class="modal-title-center">درباره سقیفه</h3>
+      <p class="text-justify">
+        «سقیفه» پروژه‌ای برای گردآوری و دسته‌بندی منابع، کتب و لینک‌های معتبر تاریخی و پژوهشی است که با هدف تسهیل دسترسی پژوهشگران طراحی شده است. ما در این درگاه می‌کوشیم تا با امانت‌داری کامل، دقیق‌ترین مسیرهای دیجیتال را در اختیار پژوهشگران و علاقه‌مندان حوزه تاریخ و فرهنگ قرار دهیم.
+      </p>
+      <button class="btn-close-bottom close-modal">بستن</button>
+    </div>
+  </div>
+
+  <div id="modal-contact" class="modal-card">
+    <div class="modal-head">
+      <h3>تماس با ما</h3>
+      <button class="close-modal-icon close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="contact-links">
+        <a href="https://t.me/fanoosarea" class="contact-item">
+          <i class="fa-brands fa-telegram"></i> پشتیبانی تلگرام
+        </a>
+        <a href="mailto:info@example.com" class="contact-item">
+          <i class="fa-solid fa-envelope"></i> ارسال ایمیل
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-add" class="modal-card">
+    <div class="modal-head">
+      <h3>پیشنهاد لینک جدید</h3>
+      <button class="close-modal-icon close-modal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <label class="input-label">عنوان مجموعه:</label>
+      <input type="text" placeholder="مثلاً: کتابخانه دیجیتال..." class="modal-input">
+      
+      <label class="input-label">لینک‌های ارتباطی (اختیاری):</label>
+      <div class="modal-scroll-area">
+        <div class="social-list">
+          
+          <div class="social-row">
+            <span><i class="fa-brands fa-telegram"></i> تلگرام:</span>
+            <input type="url" placeholder="https://t.me/..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-brands fa-whatsapp"></i> واتس‌اپ:</span>
+            <input type="text" placeholder="09..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-brands fa-instagram"></i> اینستاگرام:</span>
+            <input type="url" placeholder="instagram.com/..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-solid fa-globe"></i> وب‌سایت:</span>
+            <input type="url" placeholder="www..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-brands fa-youtube"></i> یوتیوب:</span>
+            <input type="url" placeholder="youtube.com/..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-solid fa-envelope"></i> ایمیل:</span>
+            <input type="email" placeholder="example@..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-brands fa-tiktok"></i> تیک‌تاک:</span>
+            <input type="url" placeholder="tiktok.com/..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-brands fa-x-twitter"></i> ایکس:</span>
+            <input type="url" placeholder="x.com/..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-brands fa-facebook"></i> فیس‌بوک:</span>
+            <input type="url" placeholder="facebook.com/..." dir="ltr">
+          </div>
+
+          <div class="social-row">
+            <span><i class="fa-brands fa-threads"></i> تریدز:</span>
+            <input type="url" placeholder="threads.net/..." dir="ltr">
+          </div>
+
+        </div>
+      </div>
+
+      <label class="input-label">توضیحات بیشتر:</label>
+      <textarea placeholder="توضیحات کوتاه..." class="modal-input" rows="2"></textarea>
+      <button class="btn-submit">ارسال جهت بررسی</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 4000;
+    padding: 20px;
+  }
+
+  .modal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    width: 100%;
+    max-width: 450px;
+    display: none;
+    flex-direction: column;
+    max-height: 90vh;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: modalIn 0.3s ease-out;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-head {
+    padding: 15px 25px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-head h3 { font-size: 16px; color: var(--primary); margin: 0; font-weight: 800; }
+
+  .close-modal-icon {
+    background: var(--border);
+    border: none;
+    color: var(--text-dim);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-body { padding: 20px 25px; overflow-y: auto; }
+
+  /* درباره ما اختصاصی */
+  .modal-title-center { text-align: center; color: var(--primary); margin-bottom: 15px; }
+  .text-justify { text-align: justify; text-justify: inter-word; line-height: 1.8; margin-bottom: 20px; }
+  .btn-close-bottom { width: 100%; background: var(--border); border: none; padding: 12px; border-radius: 12px; color: var(--text-main); font-weight: 700; cursor: pointer; }
+
+  /* فرم‌ها */
+  .input-label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text-dim); }
+  
+  .modal-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    color: var(--text-main);
+    font-family: inherit;
+  }
+
+  /* ناحیه اسکرول اجتماعی */
+  .modal-scroll-area {
+    background: color-mix(in srgb, var(--bg) 40%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+  }
+
+  .social-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .social-row {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 5px 10px;
+    gap: 10px;
+  }
+
+  .social-row span {
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--text-main);
+    min-width: 85px;
+  }
+
+  .social-row i { color: var(--primary); font-size: 14px; width: 16px; text-align: center; }
+
+  .social-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 12px;
+    padding: 5px;
+    outline: none;
+  }
+
+  /* اسکرول‌بار شیک */
+  .modal-scroll-area::-webkit-scrollbar { width: 4px; }
+  .modal-scroll-area::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+
+  .btn-submit {
+    width: 100%;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    padding: 14px;
+    border-radius: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 15px color-mix(in srgb, var(--primary) 20%, transparent);
+  }
+
+  /* تماس با ما */
+  .contact-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 15px;
+    text-decoration: none;
+    color: var(--text-main);
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+</style>

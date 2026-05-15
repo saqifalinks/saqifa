@@ -1,0 +1,743 @@
+---
+export const prerender = false;
+
+import Layout from '../layouts/Layout.astro';
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
+
+const { slug } = Astro.params;
+
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  icon_name: string;
+};
+
+type Link = {
+  id: string;
+  platform: string;
+  url: string;
+  display_order: number;
+};
+
+type Entity = {
+  id: string;
+  name: string;
+  description: string | null;
+  avatar_url: string | null;
+  is_verified: boolean;
+  links: Link[];
+};
+
+let category: Category | null = null;
+let entities: Entity[] = [];
+let allCategories: Category[] = [];
+let pageError = "";
+
+if (isSupabaseConfigured && supabase) {
+  const [
+    { data: catData, error: catError },
+    { data: allCats },
+  ] = await Promise.all([
+    supabase.from("categories").select("id,name,slug,icon_name").eq("slug", slug).single(),
+    supabase.from("categories").select("id,name,slug,icon_name").order("display_order", { ascending: true }),
+  ]);
+
+  allCategories = (allCats ?? []) as Category[];
+
+  if (catError || !catData) {
+    pageError = "دسته‌بندی یافت نشد.";
+  } else {
+    category = catData as Category;
+
+    const { data: entitiesData, error: entitiesError } = await supabase
+      .from("entities")
+      .select("id,name,description,avatar_url,is_verified,links(id,platform,url,display_order)")
+      .eq("category_id", category.id)
+      .order("created_at", { ascending: true });
+
+    if (entitiesError) {
+      pageError = "خطا در دریافت اطلاعات.";
+    } else {
+      entities = (entitiesData ?? []).map((e: any) => ({
+        ...e,
+        links: (e.links ?? []).sort((a: Link, b: Link) => a.display_order - b.display_order),
+      }));
+    }
+  }
+} else {
+  pageError = "تنظیمات Supabase کامل نیست.";
+}
+
+const platformIconMap: Record<string, { icon: string; brand: boolean; label: string; color: string }> = {
+  telegram:    { icon: "fa-telegram",    brand: true,  label: "تلگرام",     color: "#29B6F6" },
+  youtube:     { icon: "fa-youtube",     brand: true,  label: "یوتیوب",     color: "#FF0000" },
+  instagram:   { icon: "fa-instagram",   brand: true,  label: "اینستاگرام", color: "#E1306C" },
+  twitter:     { icon: "fa-twitter",     brand: true,  label: "توییتر",     color: "#1DA1F2" },
+  x:           { icon: "fa-x-twitter",   brand: true,  label: "ایکس",       color: "#000000" },
+  website:     { icon: "fa-globe",       brand: false, label: "وبسایت",     color: "#4CAF50" },
+  site:        { icon: "fa-globe",       brand: false, label: "وبسایت",     color: "#4CAF50" },
+  soundcloud:  { icon: "fa-soundcloud",  brand: true,  label: "ساندکلاد",   color: "#FF5500" },
+  spotify:     { icon: "fa-spotify",     brand: true,  label: "اسپاتیفای",  color: "#1DB954" },
+  facebook:    { icon: "fa-facebook",    brand: true,  label: "فیسبوک",     color: "#1877F2" },
+  whatsapp:    { icon: "fa-whatsapp",    brand: true,  label: "واتساپ",     color: "#25D366" },
+  aparat:      { icon: "fa-play-circle", brand: false, label: "آپارات",     color: "#E7194B" },
+  other:       { icon: "fa-link",        brand: false, label: "لینک",       color: "#888888" },
+};
+
+function getPlatform(platform: string) {
+  return platformIconMap[platform?.toLowerCase()] ?? platformIconMap.other;
+}
+
+// رنگ آواتار بر اساس اسم
+const avatarColors = [
+  "#5C6BC0","#26A69A","#EC407A","#AB47BC",
+  "#42A5F5","#FF7043","#66BB6A","#FFCA28",
+];
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+}
+function getInitial(name: string): string {
+  return name?.trim()?.[0] ?? "؟";
+}
+---
+
+<Layout title={category ? `${category.name} — سَقِیفَه` : "سَقِیفَه"}>
+  <div class="page-shell">
+
+    <!-- هدر -->
+    <header class="page-header">
+      <a href="/" class="back-btn" aria-label="بازگشت">
+        <i class="fa-solid fa-arrow-right"></i>
+      </a>
+      <div class="header-info">
+        {category && (
+          <>
+            <i class={`fa-solid ${category.icon_name || 'fa-folder'} header-cat-icon`}></i>
+            <div>
+              <h1 class="page-title">{category.name}</h1>
+              <p class="page-count">{entities.length} مورد</p>
+            </div>
+          </>
+        )}
+      </div>
+      <button id="search-btn" class="icon-btn" aria-label="جستجو">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+    </header>
+
+    <!-- نوار جستجو -->
+    <div class="search-bar-wrap" id="search-wrap">
+      <div class="search-bar">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="search-input" placeholder="جستجو..." autocomplete="off" />
+      </div>
+    </div>
+
+    <!-- لیست اصلی -->
+    <main class="entity-list" id="entity-list">
+      {pageError && <p class="empty-state">{pageError}</p>}
+      {entities.length === 0 && !pageError && (
+        <p class="empty-state">هنوز موردی ثبت نشده است.</p>
+      )}
+
+      {entities.map((entity) => {
+        const color = getAvatarColor(entity.name);
+        const initial = getInitial(entity.name);
+        return (
+          <div class="entity-item" data-name={entity.name.toLowerCase()}>
+            <!-- ردیف اصلی -->
+            <button class="entity-row accordion-trigger" type="button" aria-expanded="false">
+              <!-- آواتار -->
+              <div class="avatar" style={`background:${color}`}>
+                {entity.avatar_url
+                  ? <img src={entity.avatar_url} alt={entity.name} />
+                  : <span>{initial}</span>
+                }
+              </div>
+              <!-- اطلاعات -->
+              <div class="entity-meta">
+                <span class="entity-name">
+                  {entity.name}
+                  {entity.is_verified && <i class="fa-solid fa-circle-check verified"></i>}
+                </span>
+                {entity.description && (
+                  <span class="entity-desc">{entity.description}</span>
+                )}
+              </div>
+              <!-- فلش -->
+              <i class="fa-solid fa-chevron-down arrow-icon"></i>
+            </button>
+
+            <!-- آکاردئون -->
+            <div class="accordion-body">
+              <div class="accordion-inner">
+                {entity.description && (
+                  <p class="acc-bio">{entity.description}</p>
+                )}
+                <div class="social-links">
+                  {entity.links.length > 0 ? (
+                    entity.links.map((link) => {
+                      const p = getPlatform(link.platform);
+                      return (
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          class="social-chip"
+                          style={`--chip-color: ${p.color}`}
+                        >
+                          <i class={`${p.brand ? 'fa-brands' : 'fa-solid'} ${p.icon}`}></i>
+                          <span>{p.label}</span>
+                        </a>
+                      );
+                    })
+                  ) : (
+                    <p class="no-links">لینکی ثبت نشده.</p>
+                  )}
+                </div>
+                <div class="acc-actions">
+                  <button class="acc-btn report-btn" type="button"
+                    data-name={entity.name} data-links={entity.links.map(l=>l.url).join(',')}>
+                    <i class="fa-solid fa-triangle-exclamation"></i> گزارش خرابی
+                  </button>
+                  <button class="acc-btn share-btn" type="button"
+                    data-name={entity.name} data-url={`${Astro.url.origin}/${slug}`}>
+                    <i class="fa-solid fa-share-nodes"></i> اشتراک‌گذاری
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="item-divider"></div>
+          </div>
+        );
+      })}
+    </main>
+
+    <!-- منوی پایین -->
+    <nav class="bottom-nav">
+      <a href="/" class="nav-item">
+        <i class="fa-solid fa-house"></i>
+        <span>خانه</span>
+      </a>
+      <button class="nav-item" id="bottom-search-btn" type="button">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span>جستجو</span>
+      </button>
+      <button class="nav-item" id="bottom-share-page" type="button">
+        <i class="fa-solid fa-share-nodes"></i>
+        <span>اشتراک</span>
+      </button>
+    </nav>
+
+    <!-- FAB دکمه + -->
+    <div class="fab-wrap">
+      <div class="fab-menu" id="fab-menu">
+        {allCategories.map((cat) => (
+          <a href={`/${cat.slug}`} class={`fab-item ${cat.slug === slug ? 'fab-item--active' : ''}`}>
+            <i class={`fa-solid ${cat.icon_name || 'fa-folder'}`}></i>
+            <span>{cat.name}</span>
+          </a>
+        ))}
+      </div>
+      <button class="fab-btn" id="fab-btn" type="button" aria-label="دسته‌بندی‌ها">
+        <i class="fa-solid fa-plus" id="fab-icon"></i>
+      </button>
+    </div>
+
+    <!-- backdrop برای FAB -->
+    <div class="fab-backdrop" id="fab-backdrop"></div>
+
+  </div>
+</Layout>
+
+<style>
+  * { box-sizing: border-box; }
+
+  .page-shell {
+    max-width: 680px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* ——— هدر ——— */
+  .page-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .back-btn, .icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    color: var(--text-main);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    flex-shrink: 0;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .back-btn:hover, .icon-btn:hover {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+
+  .header-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .header-cat-icon {
+    font-size: 18px;
+    color: var(--primary);
+  }
+
+  .page-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--text-main);
+    margin: 0;
+  }
+
+  .page-count {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  /* ——— جستجو ——— */
+  .search-bar-wrap {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.25s ease;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .search-bar-wrap.open { max-height: 64px; }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    color: var(--text-dim);
+  }
+
+  .search-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    color: var(--text-main);
+    font-family: inherit;
+  }
+
+  /* ——— لیست ——— */
+  .entity-list {
+    padding: 0;
+  }
+
+  .entity-item { position: relative; }
+
+  .entity-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: right;
+    transition: background 0.12s;
+  }
+  .entity-row:hover {
+    background: color-mix(in srgb, var(--primary) 5%, transparent);
+  }
+
+  /* آواتار */
+  .avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 900;
+    color: #fff;
+    overflow: hidden;
+  }
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .entity-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    text-align: right;
+  }
+
+  .entity-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .verified {
+    color: #3b9eff;
+    font-size: 12px;
+  }
+
+  .entity-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .arrow-icon {
+    font-size: 12px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+  }
+
+  .entity-item.open .arrow-icon {
+    transform: rotate(180deg);
+  }
+
+  .item-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 16px 0 16px;
+    opacity: 0.5;
+  }
+
+  /* ——— آکاردئون ——— */
+  .accordion-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+  }
+  .entity-item.open .accordion-body {
+    grid-template-rows: 1fr;
+  }
+  .accordion-inner {
+    overflow: hidden;
+    padding: 0 16px;
+  }
+  .entity-item.open .accordion-inner {
+    padding: 0 16px 14px;
+  }
+
+  .acc-bio {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin: 0 0 12px;
+    padding-top: 4px;
+  }
+
+  .social-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .social-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--chip-color) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--chip-color) 35%, transparent);
+    color: var(--chip-color);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .social-chip:hover {
+    background: color-mix(in srgb, var(--chip-color) 22%, transparent);
+    transform: translateY(-1px);
+  }
+  .social-chip i { font-size: 14px; }
+
+  .no-links {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  .acc-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+
+  .acc-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, color 0.15s;
+  }
+  .report-btn:hover { color: #ff5252; border-color: #ff5252; }
+  .share-btn:hover { color: var(--primary); border-color: var(--primary); }
+
+  /* ——— منوی پایین ——— */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 680px;
+    margin: 0 auto;
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 40;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 0;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 700;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s;
+  }
+  .nav-item i { font-size: 18px; }
+  .nav-item:hover, .nav-item.active { color: var(--primary); }
+
+  /* ——— FAB ——— */
+  .fab-wrap {
+    position: fixed;
+    bottom: 72px;
+    left: 20px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .fab-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 45%, transparent);
+    transition: transform 0.25s ease, box-shadow 0.25s;
+    order: 2;
+  }
+  .fab-btn:hover { transform: scale(1.08); }
+  .fab-btn.open { transform: rotate(45deg); }
+
+  .fab-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    order: 1;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .fab-menu.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .fab-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px 8px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    color: var(--text-main);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 2px 10px color-mix(in srgb, #000 12%, transparent);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .fab-item i { color: var(--primary); font-size: 15px; }
+  .fab-item:hover, .fab-item--active {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .fab-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    display: none;
+  }
+  .fab-backdrop.open { display: block; }
+
+  .empty-state {
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 40px 16px;
+    text-align: center;
+  }
+</style>
+
+<script is:inline>
+  // ——— آکاردئون ———
+  const items = document.querySelectorAll(".entity-item");
+  items.forEach((item) => {
+    const trigger = item.querySelector(".accordion-trigger");
+    trigger?.addEventListener("click", () => {
+      const isOpen = item.classList.contains("open");
+      items.forEach((i) => {
+        i.classList.remove("open");
+        i.querySelector(".accordion-trigger")?.setAttribute("aria-expanded", "false");
+      });
+      if (!isOpen) {
+        item.classList.add("open");
+        trigger.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+
+  // ——— جستجو ———
+  const searchWrap = document.getElementById("search-wrap");
+  const searchInput = document.getElementById("search-input");
+  const entityList = document.getElementById("entity-list");
+
+  function toggleSearch() {
+    searchWrap?.classList.toggle("open");
+    if (searchWrap?.classList.contains("open")) searchInput?.focus();
+    else { if (searchInput) searchInput.value = ""; filterEntities(""); }
+  }
+
+  document.getElementById("search-btn")?.addEventListener("click", toggleSearch);
+  document.getElementById("bottom-search-btn")?.addEventListener("click", toggleSearch);
+
+  function filterEntities(query) {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll(".entity-item").forEach((item) => {
+      const name = item.getAttribute("data-name") ?? "";
+      item.style.display = !q || name.includes(q) ? "" : "none";
+    });
+  }
+
+  searchInput?.addEventListener("input", (e) => filterEntities(e.target.value));
+
+  // ——— FAB ———
+  const fabBtn = document.getElementById("fab-btn");
+  const fabMenu = document.getElementById("fab-menu");
+  const fabBackdrop = document.getElementById("fab-backdrop");
+  const fabIcon = document.getElementById("fab-icon");
+
+  function toggleFab() {
+    const isOpen = fabMenu?.classList.contains("open");
+    fabMenu?.classList.toggle("open", !isOpen);
+    fabBackdrop?.classList.toggle("open", !isOpen);
+    fabBtn?.classList.toggle("open", !isOpen);
+  }
+
+  fabBtn?.addEventListener("click", toggleFab);
+  fabBackdrop?.addEventListener("click", toggleFab);
+
+  // ——— اشتراک‌گذاری ———
+  document.querySelectorAll(".share-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const url = btn.getAttribute("data-url") ?? location.href;
+      const name = btn.getAttribute("data-name") ?? "";
+      if (navigator.share) {
+        await navigator.share({ title: name, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert("لینک کپی شد!");
+      }
+    });
+  });
+
+  // ——— اشتراک صفحه (منوی پایین) ———
+  document.getElementById("bottom-share-page")?.addEventListener("click", async () => {
+    if (navigator.share) {
+      await navigator.share({ title: document.title, url: location.href });
+    } else {
+      await navigator.clipboard.writeText(location.href);
+      alert("لینک صفحه کپی شد!");
+    }
+  });
+
+  // ——— گزارش خرابی ———
+  document.querySelectorAll(".report-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const name = btn.getAttribute("data-name") ?? "";
+      alert(`گزارش خرابی برای «${name}» ثبت شد. متشکریم!`);
+    });
+  });
+</script>

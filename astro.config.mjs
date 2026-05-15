@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
-import vercel from '@astrojs/vercel/serverless'; // این خط را اضافه کن
+import vercel from '@astrojs/vercel/serverless';
+
 export default defineConfig({
   output: 'server',
-  adapter: vercel(), // این خط را اضافه کن
+  adapter: vercel(),
 });

@@ -25,55 +25,21 @@ type LegacyDailyRow = {
   article_json?: { title?: string; description?: string; url?: string } | null;
 };
 
-/** تاریخ شروع چرخه — از این تاریخ شمارش روزها شروع میشه */
 const START_DATE = new Date("2026-05-14T00:00:00Z");
 
-/**
- * بر اساس تعداد روزهای گذشته از START_DATE و تعداد کل ردیف‌ها،
- * day_id امروز رو حساب می‌کنه — چرخشی و خودکار
- */
 function getTodayDayId(totalRows: number): number {
   if (totalRows === 0) return 1;
-  const now = new Date();
-  const diffMs = now.getTime() - START_DATE.getTime();
+  const diffMs = new Date().getTime() - START_DATE.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   return (diffDays % totalRows) + 1;
 }
 
 function mapLegacyRow(row: LegacyDailyRow): Slide[] {
   const results: Slide[] = [];
-  if (row.book_json?.title) {
-    results.push({
-      slide_type: "book",
-      title: String(row.book_json.title),
-      description: String(row.book_json.description ?? ""),
-      url: String(row.book_json.url ?? "#"),
-    });
-  }
-  if (row.video_json?.title) {
-    results.push({
-      slide_type: "video",
-      title: String(row.video_json.title),
-      description: String(row.video_json.description ?? ""),
-      url: String(row.video_json.url ?? "#"),
-    });
-  }
-  if (row.audio_json?.title) {
-    results.push({
-      slide_type: "audio",
-      title: String(row.audio_json.title),
-      description: String(row.audio_json.description ?? ""),
-      url: String(row.audio_json.url ?? "#"),
-    });
-  }
-  if (row.article_json?.title) {
-    results.push({
-      slide_type: "article",
-      title: String(row.article_json.title),
-      description: String(row.article_json.description ?? ""),
-      url: String(row.article_json.url ?? "#"),
-    });
-  }
+  if (row.book_json?.title)    results.push({ slide_type: "book",    title: String(row.book_json.title),    description: String(row.book_json.description ?? ""),    url: String(row.book_json.url ?? "#") });
+  if (row.video_json?.title)   results.push({ slide_type: "video",   title: String(row.video_json.title),   description: String(row.video_json.description ?? ""),   url: String(row.video_json.url ?? "#") });
+  if (row.audio_json?.title)   results.push({ slide_type: "audio",   title: String(row.audio_json.title),   description: String(row.audio_json.description ?? ""),   url: String(row.audio_json.url ?? "#") });
+  if (row.article_json?.title) results.push({ slide_type: "article", title: String(row.article_json.title), description: String(row.article_json.description ?? ""), url: String(row.article_json.url ?? "#") });
   return results;
 }
 
@@ -83,18 +49,12 @@ let dataError = "";
 let todayDayId = 1;
 
 if (isSupabaseConfigured && supabase) {
-  // همزمان categories و تعداد کل ردیف‌های daily_content رو بگیر
   const [
     { data: categoriesData, error: categoriesError },
     { count: totalRows, error: countError },
   ] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("id,name,slug,icon_name,display_order")
-      .order("display_order", { ascending: true }),
-    supabase
-      .from("daily_content")
-      .select("day_id", { count: "exact", head: true }),
+    supabase.from("categories").select("id,name,slug,icon_name,display_order").order("display_order", { ascending: true }),
+    supabase.from("daily_content").select("day_id", { count: "exact", head: true }),
   ]);
 
   if (categoriesError) {
@@ -104,10 +64,7 @@ if (isSupabaseConfigured && supabase) {
   }
 
   if (!countError && totalRows && totalRows > 0) {
-    // day_id امروز رو حساب کن
     todayDayId = getTodayDayId(totalRows);
-
-    // فقط ردیف امروز رو بگیر
     const { data: todayRow, error: todayError } = await supabase
       .from("daily_content")
       .select("day_id,book_json,video_json,audio_json,article_json")
@@ -115,7 +72,6 @@ if (isSupabaseConfigured && supabase) {
       .single();
 
     if (todayError || !todayRow) {
-      // اگه day_id پیدا نشد، اولین ردیف رو نشون بده
       const { data: firstRow } = await supabase
         .from("daily_content")
         .select("day_id,book_json,video_json,audio_json,article_json")
@@ -126,12 +82,9 @@ if (isSupabaseConfigured && supabase) {
     } else {
       slides = mapLegacyRow(todayRow as LegacyDailyRow);
     }
-  } else if (!countError && (totalRows === 0 || totalRows === null)) {
-    dataError = "هنوز محتوایی در پایگاه داده ثبت نشده است.";
   }
-
 } else {
-  dataError = "تنظیمات Supabase کامل نیست. مقدارهای SUPABASE_URL و SUPABASE_ANON_KEY را در .env قرار دهید.";
+  dataError = "تنظیمات Supabase کامل نیست.";
 }
 
 const siteBannerText = "درج لینک در «سَقِیفَه» به معنی تایید کلی مطالب آن نیست.";
@@ -139,6 +92,8 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
 
 <Layout title="لینکدونی اهل سنت" wide>
   <div class="layout-shell layout-shell--home">
+
+    <!-- سایدبار دسکتاپ -->
     <aside id="desktop-sidebar" class="desktop-sidebar" aria-label="منوی کناری دسکتاپ">
       <div class="sidebar-brand">
         <span class="sidebar-brand-mark" aria-hidden="true"></span>
@@ -149,7 +104,7 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
       </div>
       <nav class="sidebar-links">
         <a href="#daily-content"><i class="fa-solid fa-newspaper"></i> مطلب روز</a>
-        <a href="#categories"><i class="fa-solid fa-table-cells-large"></i>دسته‌بندی</a>
+        <a href="#categories"><i class="fa-solid fa-table-cells-large"></i> دسته‌بندی</a>
       </nav>
       <button id="theme-toggle-desktop" class="theme-btn theme-btn--sidebar" type="button" aria-label="تغییر تم">
         <i class="fa-solid fa-circle-half-stroke"></i> تم روشن / تیره
@@ -157,15 +112,13 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     </aside>
 
     <main class="main-content">
+      <!-- هدر موبایل — بدون دکمه تم -->
       <header class="main-header">
         <div class="logo-area">
-          <h1 class="site-title"><a href="/" style="text-decoration: none; color: inherit;">سَقِیفَه</a></h1>
+          <h1 class="site-title"><a href="/" style="text-decoration:none;color:inherit;">سَقِیفَه</a></h1>
           <p class="site-subtitle">درگاه جامع و داینامیک هزاران مسیر دیجیتال</p>
         </div>
         <div class="header-actions">
-          <button id="theme-toggle-mobile" class="theme-btn icon-only" type="button" aria-label="تغییر تم">
-            <i class="fa-solid fa-circle-half-stroke"></i>
-          </button>
           <button id="menu-toggle" class="theme-btn icon-only mobile-only" type="button" aria-label="باز کردن منو">
             <i class="fa-solid fa-bars"></i>
           </button>
@@ -235,6 +188,7 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     </main>
   </div>
 
+  <!-- منوی موبایل کشویی -->
   <div id="mobile-menu-backdrop" class="mobile-menu-backdrop"></div>
   <aside id="mobile-sidebar" class="mobile-sidebar">
     <div class="sidebar-head">
@@ -249,6 +203,23 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
       <a href="#" class="open-contact-trigger"><i class="fa-solid fa-headset"></i> تماس با ما</a>
     </nav>
   </aside>
+
+  <!-- منوی پایین موبایل -->
+  <nav class="bottom-nav mobile-only-flex">
+    <a href="/" class="nav-item active">
+      <i class="fa-solid fa-house"></i>
+      <span>خانه</span>
+    </a>
+    <button class="nav-item" id="nav-search-home" type="button">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <span>جستجو</span>
+    </button>
+    <button class="nav-item" id="nav-theme-home" type="button">
+      <i class="fa-solid fa-circle-half-stroke"></i>
+      <span>تم</span>
+    </button>
+  </nav>
+
   <Modals />
 </Layout>
 
@@ -257,6 +228,7 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     display: flex;
     flex-direction: column;
     gap: 16px;
+    padding-bottom: 72px;
   }
 
   .desktop-sidebar { display: none; }
@@ -330,14 +302,10 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     justify-content: center;
   }
 
-  .hero-row {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-  }
+  .mobile-only-flex { display: flex; }
 
+  .hero-row { display: flex; flex-direction: column; gap: 18px; }
   .section-wrapper { margin-bottom: 0; }
-
   .section-daily .section-top-bar { margin-bottom: 8px; }
 
   .disclaimer-box {
@@ -403,7 +371,6 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
   }
 
   .slider-lines-wrapper { padding: 0 14px 4px; }
-
   .slider-lines { display: flex; gap: 3px; }
 
   .line-box {
@@ -414,13 +381,7 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     overflow: hidden;
   }
 
-  .line-fill {
-    width: 0%;
-    height: 100%;
-    background: var(--primary);
-    transition: width 0.3s ease;
-  }
-
+  .line-fill { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s ease; }
   .line-fill.active { width: 100%; }
 
   .book-footer {
@@ -441,8 +402,7 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     border-radius: 20px;
   }
 
-  .nav-arrow-s,
-  .nav-control-s {
+  .nav-arrow-s, .nav-control-s {
     background: none;
     border: none;
     color: var(--text-dim);
@@ -461,7 +421,7 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     font-weight: 800;
   }
 
-  /* ——— دسته‌بندی ——— */
+  /* دسته‌بندی */
   .section-categories { margin-top: 22px; }
 
   .categories-grid {
@@ -484,15 +444,9 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     transition: transform 0.2s ease, border-color 0.2s ease;
   }
 
-  .cat-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--primary);
-  }
+  .cat-card:hover { transform: translateY(-2px); border-color: var(--primary); }
 
-  .cat-icon-box {
-    font-size: 24px;
-    color: var(--primary);
-  }
+  .cat-icon-box { font-size: 24px; color: var(--primary); }
 
   .cat-name {
     color: var(--text-main);
@@ -519,12 +473,8 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     margin: 0;
   }
 
-  /* ——— سایدبار موبایل ——— */
-  .sidebar-links {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+  /* سایدبار موبایل */
+  .sidebar-links { display: flex; flex-direction: column; gap: 8px; }
 
   .sidebar-links a {
     background: var(--card-bg);
@@ -542,7 +492,7 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
   .mobile-menu-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(0,0,0,0.45);
     opacity: 0;
     visibility: hidden;
     transition: 0.2s ease;
@@ -572,11 +522,7 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     margin-bottom: 4px;
   }
 
-  .mobile-sidebar .sidebar-head h2 {
-    margin: 0;
-    font-size: 16px;
-    color: var(--text-main);
-  }
+  .mobile-sidebar .sidebar-head h2 { margin: 0; font-size: 16px; color: var(--text-main); }
 
   .close-btn {
     background: transparent;
@@ -595,12 +541,53 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
   .mobile-sidebar.open { right: 0; }
   .mobile-menu-backdrop.open { opacity: 1; visibility: visible; }
 
-  /* ——— دسکتاپ ——— */
+  /* منوی پایین موبایل */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 680px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 40;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 0;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 700;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s;
+  }
+
+  .nav-item i { font-size: 19px; }
+  .nav-item:hover, .nav-item.active { color: var(--primary); }
+
+  @media (max-width: 639px) {
+    .categories-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* دسکتاپ */
   @media (min-width: 960px) {
     .layout-shell--home {
       flex-direction: row;
       align-items: flex-start;
       gap: 28px;
+      padding-bottom: 0;
     }
 
     .desktop-sidebar {
@@ -643,22 +630,12 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
     .sidebar-tagline { margin: 4px 0 0; font-size: 11px; color: var(--text-dim); font-weight: 600; }
 
     .desktop-sidebar .sidebar-links { flex: 1; gap: 10px; }
+    .desktop-sidebar .sidebar-links a { padding: 12px 14px; font-size: 14px; border-radius: 12px; }
+    .desktop-sidebar .sidebar-links a:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
 
-    .desktop-sidebar .sidebar-links a {
-      padding: 12px 14px;
-      font-size: 14px;
-      border-radius: 12px;
-    }
-
-    .desktop-sidebar .sidebar-links a:hover {
-      border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-    }
-
-    .mobile-only,
-    .mobile-sidebar,
-    .mobile-menu-backdrop { display: none !important; }
-
-    #theme-toggle-mobile { display: none; }
+    .mobile-only, .mobile-only-flex,
+    .mobile-sidebar, .mobile-menu-backdrop,
+    .bottom-nav { display: none !important; }
 
     .main-header {
       margin-bottom: 22px;
@@ -681,228 +658,115 @@ const siteBannerText = "درج لینک در «سَقِیفَه» به معنی 
       flex-direction: column;
     }
 
-    .section-daily .book-body {
-      flex: 1;
-      padding: 22px 24px 14px;
-      align-items: center;
-    }
-
+    .section-daily .book-body { flex: 1; padding: 22px 24px 14px; align-items: center; }
     #slide-title { font-size: 22px; margin-bottom: 8px; }
     #slide-desc { font-size: 14px; min-height: 52px; }
 
-    .book-icon-box {
-      width: 72px;
-      height: 88px;
-      font-size: 32px;
-      border-radius: 16px;
-    }
-
+    .book-icon-box { width: 72px; height: 88px; font-size: 32px; border-radius: 16px; }
     .book-footer { padding: 14px 22px; }
     .btn-read { font-size: 13px; }
 
-    .section-categories {
-      margin-top: 28px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-    }
-
-    .categories-grid {
-      grid-template-columns: repeat(5, 1fr);
-      gap: 14px;
-    }
+    .section-categories { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .categories-grid { grid-template-columns: repeat(5, 1fr); gap: 14px; }
   }
 </style>
 
 <script is:inline define:vars={{ slides }}>
   const html = document.documentElement;
-  const themeToggleMobile = document.getElementById("theme-toggle-mobile");
-  const themeToggleDesktop = document.getElementById("theme-toggle-desktop");
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "light" || savedTheme === "dark") html.setAttribute("data-theme", savedTheme);
+
+  function toggleTheme() {
+    const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
+    html.setAttribute("data-theme", next);
+    localStorage.setItem("theme", next);
+  }
+
+  document.getElementById("theme-toggle-desktop")?.addEventListener("click", toggleTheme);
+  document.getElementById("nav-theme-home")?.addEventListener("click", toggleTheme);
+
+  // منوی موبایل
   const menuToggle = document.getElementById("menu-toggle");
   const menuClose = document.getElementById("menu-close");
   const mobileSidebar = document.getElementById("mobile-sidebar");
   const mobileBackdrop = document.getElementById("mobile-menu-backdrop");
-  const mobileSidebarLinks = mobileSidebar?.querySelectorAll("a");
 
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme === "light" || savedTheme === "dark") {
-    html.setAttribute("data-theme", savedTheme);
-  }
-
-  function toggleTheme() {
-    const current = html.getAttribute("data-theme");
-    const nextTheme = current === "light" ? "dark" : "light";
-    html.setAttribute("data-theme", nextTheme);
-    localStorage.setItem("theme", nextTheme);
-  }
-
-  themeToggleMobile?.addEventListener("click", toggleTheme);
-  themeToggleDesktop?.addEventListener("click", toggleTheme);
-
-  function closeMenu() {
-    mobileSidebar?.classList.remove("open");
-    mobileBackdrop?.classList.remove("open");
-  }
-  function openMenu() {
-    mobileSidebar?.classList.add("open");
-    mobileBackdrop?.classList.add("open");
-  }
+  function closeMenu() { mobileSidebar?.classList.remove("open"); mobileBackdrop?.classList.remove("open"); }
+  function openMenu()  { mobileSidebar?.classList.add("open");    mobileBackdrop?.classList.add("open"); }
 
   menuToggle?.addEventListener("click", openMenu);
   menuClose?.addEventListener("click", closeMenu);
   mobileBackdrop?.addEventListener("click", closeMenu);
-  mobileSidebarLinks?.forEach((link) => link.addEventListener("click", closeMenu));
+  mobileSidebar?.querySelectorAll("a").forEach(l => l.addEventListener("click", closeMenu));
 
-  // اسلایدر — ۴ تا محتوا (کتاب، ویدیو، صوت، مقاله) از ردیف امروز
-  let idx = 0;
-  let isPaused = false;
-  let sliderInterval;
+  // جستجو (موقتاً اسکرول به دسته‌ها)
+  document.getElementById("nav-search-home")?.addEventListener("click", () => {
+    document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
+  });
+
+  // اسلایدر
+  let idx = 0, isPaused = false, sliderInterval;
   const duration = 5000;
+  const iconMap = { book: "fa-book-bookmark", video: "fa-play-circle", audio: "fa-headphones", article: "fa-file-lines" };
+  const ctaMap  = { book: "بیشتر بدانید", video: "بیشتر ببینید", audio: "بیشتر بشنوید", article: "بیشتر بخوانید" };
 
-  const iconMap = {
-    book: "fa-book-bookmark",
-    video: "fa-play-circle",
-    audio: "fa-headphones",
-    article: "fa-file-lines",
-  };
-  const ctaMap = {
-    book: "بیشتر بدانید",
-    video: "بیشتر ببینید",
-    audio: "بیشتر بشنوید",
-    article: "بیشتر بخوانید",
-  };
-
-  const titleEl = document.getElementById("slide-title");
-  const descEl = document.getElementById("slide-desc");
-  const linkEl = document.getElementById("slide-link");
+  const titleEl   = document.getElementById("slide-title");
+  const descEl    = document.getElementById("slide-desc");
+  const linkEl    = document.getElementById("slide-link");
   const btnTextEl = document.getElementById("btn-text");
-  const iconEl = document.getElementById("slide-icon");
-  const nextBtn = document.getElementById("next-btn");
-  const prevBtn = document.getElementById("prev-btn");
-  const pauseBtn = document.getElementById("pause-btn");
+  const iconEl    = document.getElementById("slide-icon");
+  const nextBtn   = document.getElementById("next-btn");
+  const prevBtn   = document.getElementById("prev-btn");
+  const pauseBtn  = document.getElementById("pause-btn");
 
   function updateSlide() {
-    if (!slides?.length || !titleEl || !descEl || !linkEl || !btnTextEl || !iconEl) return;
+    if (!slides?.length || !titleEl) return;
     const item = slides[idx];
-    titleEl.textContent = item.title || "بدون عنوان";
-    descEl.textContent = item.description || "";
-    linkEl.href = item.url || "#";
+    titleEl.textContent   = item.title || "بدون عنوان";
+    descEl.textContent    = item.description || "";
+    linkEl.href           = item.url || "#";
     btnTextEl.textContent = ctaMap[item.slide_type] || "بیشتر بخوانید";
-    iconEl.className = `fa-solid ${iconMap[item.slide_type] || "fa-book-bookmark"}`;
-    document.querySelectorAll(".line-fill").forEach((line, i) =>
-      line.classList.toggle("active", i === idx)
-    );
+    iconEl.className      = `fa-solid ${iconMap[item.slide_type] || "fa-book-bookmark"}`;
+    document.querySelectorAll(".line-fill").forEach((l, i) => l.classList.toggle("active", i === idx));
   }
 
   function startTimer() {
     if (!slides?.length) return;
     if (sliderInterval) clearInterval(sliderInterval);
-    sliderInterval = setInterval(() => {
-      if (isPaused) return;
-      idx = (idx + 1) % slides.length;
-      updateSlide();
-    }, duration);
+    sliderInterval = setInterval(() => { if (!isPaused) { idx = (idx+1) % slides.length; updateSlide(); } }, duration);
   }
 
-  nextBtn?.addEventListener("click", () => {
-    if (!slides?.length) return;
-    idx = (idx + 1) % slides.length;
-    updateSlide();
-    startTimer();
-  });
-
-  prevBtn?.addEventListener("click", () => {
-    if (!slides?.length) return;
-    idx = (idx - 1 + slides.length) % slides.length;
-    updateSlide();
-    startTimer();
-  });
-
+  nextBtn?.addEventListener("click", () => { if (!slides?.length) return; idx=(idx+1)%slides.length; updateSlide(); startTimer(); });
+  prevBtn?.addEventListener("click", () => { if (!slides?.length) return; idx=(idx-1+slides.length)%slides.length; updateSlide(); startTimer(); });
   pauseBtn?.addEventListener("click", () => {
     isPaused = !isPaused;
-    pauseBtn.innerHTML = isPaused
-      ? '<i class="fa-solid fa-play"></i>'
-      : '<i class="fa-solid fa-pause"></i>';
+    pauseBtn.innerHTML = isPaused ? '<i class="fa-solid fa-play"></i>' : '<i class="fa-solid fa-pause"></i>';
   });
 
-  if (slides?.length) {
-    updateSlide();
-    startTimer();
-  }
+  if (slides?.length) { updateSlide(); startTimer(); }
 
-<<<<<<< HEAD
-  // --- بخش لمسی (Touch Support) ---
+  // لمسی
   let touchStartX = 0;
-  let touchEndX = 0;
-=======
-  // پشتیبانی لمسی
-  let touchStartX = 0;
->>>>>>> bd4d060 (اصلاح منطق چرخه روزانه و بهینه‌سازی لود اسلایدها)
   const sliderArea = document.querySelector(".book-card");
-
-  sliderArea?.addEventListener("touchstart", (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-  }, { passive: true });
-
+  sliderArea?.addEventListener("touchstart", (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
   sliderArea?.addEventListener("touchend", (e) => {
-<<<<<<< HEAD
-    touchEndX = e.changedTouches[0].screenX;
-    const swipeThreshold = 50; 
-    
-    if (touchEndX < touchStartX - swipeThreshold) {
-      // کشیدن به چپ -> بعدی
-      idx = (idx + 1) % slides.length;
-      updateSlide();
-      startTimer();
-    } else if (touchEndX > touchStartX + swipeThreshold) {
-      // کشیدن به راست -> قبلی
-      idx = (idx - 1 + slides.length) % slides.length;
-      updateSlide();
-      startTimer();
-    }
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    if (!slides?.length || Math.abs(dx) < 50) return;
+    idx = dx < 0 ? (idx+1)%slides.length : (idx-1+slides.length)%slides.length;
+    updateSlide(); startTimer();
   }, { passive: true });
-  
-=======
-    const touchEndX = e.changedTouches[0].screenX;
-    const threshold = 50;
-    if (!slides?.length) return;
-    if (touchEndX < touchStartX - threshold) {
-      idx = (idx + 1) % slides.length;
-      updateSlide(); startTimer();
-    } else if (touchEndX > touchStartX + threshold) {
-      idx = (idx - 1 + slides.length) % slides.length;
-      updateSlide(); startTimer();
-    }
-  }, { passive: true });
->>>>>>> bd4d060 (اصلاح منطق چرخه روزانه و بهینه‌سازی لود اسلایدها)
 </script>
 
 <script is:inline>
   const overlay = document.getElementById('modal-overlay');
-
   function openM(id) {
     overlay.style.display = 'flex';
     document.querySelectorAll('.modal-card').forEach(m => m.style.display = 'none');
     document.getElementById(id).style.display = 'block';
   }
-
   document.querySelector('.open-about-trigger')?.addEventListener('click', () => openM('modal-about'));
   document.querySelector('.open-contact-trigger')?.addEventListener('click', () => openM('modal-contact'));
   document.querySelector('.open-add-trigger')?.addEventListener('click', () => openM('modal-add'));
-
-<<<<<<< HEAD
   document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click', () => overlay.style.display = 'none'));
   overlay?.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
-
-
-
-
-
-=======
-  document.querySelectorAll('.close-modal').forEach(b =>
-    b.addEventListener('click', () => overlay.style.display = 'none')
-  );
-  overlay?.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.style.display = 'none';
-  });
->>>>>>> bd4d060 (اصلاح منطق چرخه روزانه و بهینه‌سازی لود اسلایدها)
 </script>

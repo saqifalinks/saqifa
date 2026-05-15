@@ -6,28 +6,9 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
 const { slug } = Astro.params;
 
-type Category = {
-  id: string;
-  name: string;
-  slug: string;
-  icon_name: string;
-};
-
-type Link = {
-  id: string;
-  platform: string;
-  url: string;
-  display_order: number;
-};
-
-type Entity = {
-  id: string;
-  name: string;
-  description: string | null;
-  avatar_url: string | null;
-  is_verified: boolean;
-  links: Link[];
-};
+type Category = { id: string; name: string; slug: string; icon_name: string; };
+type Link     = { id: string; platform: string; url: string; display_order: number; };
+type Entity   = { id: string; name: string; title: string | null; description: string | null; avatar_url: string | null; is_verified: boolean; links: Link[]; };
 
 let category: Category | null = null;
 let entities: Entity[] = [];
@@ -35,10 +16,7 @@ let allCategories: Category[] = [];
 let pageError = "";
 
 if (isSupabaseConfigured && supabase) {
-  const [
-    { data: catData, error: catError },
-    { data: allCats },
-  ] = await Promise.all([
+  const [{ data: catData, error: catError }, { data: allCats }] = await Promise.all([
     supabase.from("categories").select("id,name,slug,icon_name").eq("slug", slug).single(),
     supabase.from("categories").select("id,name,slug,icon_name").order("display_order", { ascending: true }),
   ]);
@@ -49,10 +27,9 @@ if (isSupabaseConfigured && supabase) {
     pageError = "دسته‌بندی یافت نشد.";
   } else {
     category = catData as Category;
-
     const { data: entitiesData, error: entitiesError } = await supabase
       .from("entities")
-      .select("id,name,description,avatar_url,is_verified,links(id,platform,url,display_order)")
+      .select("id,name,title,description,avatar_url,is_verified,links(id,platform,url,display_order)")
       .eq("category_id", category.id)
       .order("created_at", { ascending: true });
 
@@ -65,43 +42,56 @@ if (isSupabaseConfigured && supabase) {
       }));
     }
   }
-} else {
-  pageError = "تنظیمات Supabase کامل نیست.";
 }
 
-const platformIconMap: Record<string, { icon: string; brand: boolean; label: string; color: string }> = {
-  telegram:    { icon: "fa-telegram",    brand: true,  label: "تلگرام",     color: "#29B6F6" },
-  youtube:     { icon: "fa-youtube",     brand: true,  label: "یوتیوب",     color: "#FF0000" },
-  instagram:   { icon: "fa-instagram",   brand: true,  label: "اینستاگرام", color: "#E1306C" },
-  twitter:     { icon: "fa-twitter",     brand: true,  label: "توییتر",     color: "#1DA1F2" },
-  x:           { icon: "fa-x-twitter",   brand: true,  label: "ایکس",       color: "#000000" },
-  website:     { icon: "fa-globe",       brand: false, label: "وبسایت",     color: "#4CAF50" },
-  site:        { icon: "fa-globe",       brand: false, label: "وبسایت",     color: "#4CAF50" },
-  soundcloud:  { icon: "fa-soundcloud",  brand: true,  label: "ساندکلاد",   color: "#FF5500" },
-  spotify:     { icon: "fa-spotify",     brand: true,  label: "اسپاتیفای",  color: "#1DB954" },
-  facebook:    { icon: "fa-facebook",    brand: true,  label: "فیسبوک",     color: "#1877F2" },
-  whatsapp:    { icon: "fa-whatsapp",    brand: true,  label: "واتساپ",     color: "#25D366" },
-  aparat:      { icon: "fa-play-circle", brand: false, label: "آپارات",     color: "#E7194B" },
-  other:       { icon: "fa-link",        brand: false, label: "لینک",       color: "#888888" },
+const platformMap: Record<string, { icon: string; brand: boolean; label: string; color: string }> = {
+  telegram:   { icon: "fa-telegram",      brand: true,  label: "تلگرام",      color: "#29B6F6" },
+  youtube:    { icon: "fa-youtube",        brand: true,  label: "یوتیوب",      color: "#FF0000" },
+  instagram:  { icon: "fa-instagram",      brand: true,  label: "اینستاگرام",  color: "#E1306C" },
+  twitter:    { icon: "fa-twitter",        brand: true,  label: "توییتر",      color: "#1DA1F2" },
+  x:          { icon: "fa-x-twitter",      brand: true,  label: "ایکس",        color: "#222222" },
+  website:    { icon: "fa-globe",          brand: false, label: "وبسایت",      color: "#4CAF50" },
+  site:       { icon: "fa-globe",          brand: false, label: "وبسایت",      color: "#4CAF50" },
+  soundcloud: { icon: "fa-soundcloud",     brand: true,  label: "ساندکلاد",    color: "#FF5500" },
+  spotify:    { icon: "fa-spotify",        brand: true,  label: "اسپاتیفای",   color: "#1DB954" },
+  facebook:   { icon: "fa-facebook",       brand: true,  label: "فیسبوک",      color: "#1877F2" },
+  whatsapp:   { icon: "fa-whatsapp",       brand: true,  label: "واتساپ",      color: "#25D366" },
+  aparat:     { icon: "fa-play-circle",    brand: false, label: "آپارات",      color: "#E7194B" },
+  linkedin:   { icon: "fa-linkedin",       brand: true,  label: "لینکدین",     color: "#0A66C2" },
+  tiktok:     { icon: "fa-tiktok",         brand: true,  label: "تیک‌تاک",     color: "#010101" },
+  pinterest:  { icon: "fa-pinterest",      brand: true,  label: "پینترست",     color: "#E60023" },
+  discord:    { icon: "fa-discord",        brand: true,  label: "دیسکورد",     color: "#5865F2" },
+  twitch:     { icon: "fa-twitch",         brand: true,  label: "توییچ",       color: "#9146FF" },
+  reddit:     { icon: "fa-reddit",         brand: true,  label: "ردیت",        color: "#FF4500" },
 };
 
-function getPlatform(platform: string) {
-  return platformIconMap[platform?.toLowerCase()] ?? platformIconMap.other;
+function getPlatform(p: string) {
+  return platformMap[p?.toLowerCase()] ?? { icon: "fa-link", brand: false, label: p ?? "لینک", color: "#888888" };
 }
 
-// رنگ آواتار بر اساس اسم
-const avatarColors = [
-  "#5C6BC0","#26A69A","#EC407A","#AB47BC",
-  "#42A5F5","#FF7043","#66BB6A","#FFCA28",
-];
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return avatarColors[Math.abs(hash) % avatarColors.length];
+const avatarColors = ["#5C6BC0","#26A69A","#EC407A","#AB47BC","#42A5F5","#FF7043","#66BB6A","#FF8F00"];
+function getAvatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return avatarColors[Math.abs(h) % avatarColors.length];
 }
-function getInitial(name: string): string {
-  return name?.trim()?.[0] ?? "؟";
-}
+function getInitial(name: string) { return name?.trim()?.[0] ?? "؟"; }
+
+const searchData = entities.map(e => ({
+  id: e.id,
+  name: e.name,
+  title: e.title ?? "",
+  description: e.description ?? "",
+  avatar_url: e.avatar_url,
+  color: getAvatarColor(e.name),
+  initial: getInitial(e.name),
+  is_verified: e.is_verified,
+  links: e.links.map(l => ({
+    url: l.url,
+    platform: l.platform,
+    ...getPlatform(l.platform),
+  })),
+}));
 ---
 
 <Layout title={category ? `${category.name} — سَقِیفَه` : "سَقِیفَه"}>
@@ -109,109 +99,98 @@ function getInitial(name: string): string {
 
     <!-- هدر -->
     <header class="page-header">
-      <a href="/" class="back-btn" aria-label="بازگشت">
-        <i class="fa-solid fa-arrow-right"></i>
-      </a>
-      <div class="header-info">
-        {category && (
-          <>
-            <i class={`fa-solid ${category.icon_name || 'fa-folder'} header-cat-icon`}></i>
-            <div>
-              <h1 class="page-title">{category.name}</h1>
-              <p class="page-count">{entities.length} مورد</p>
-            </div>
-          </>
-        )}
-      </div>
-      <button id="search-btn" class="icon-btn" aria-label="جستجو">
-        <i class="fa-solid fa-magnifying-glass"></i>
-      </button>
+      <h1 class="page-title">{category?.name ?? "دسته‌بندی"}</h1>
     </header>
 
-    <!-- نوار جستجو -->
-    <div class="search-bar-wrap" id="search-wrap">
-      <div class="search-bar">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="search-input" placeholder="جستجو..." autocomplete="off" />
-      </div>
-    </div>
-
-    <!-- لیست اصلی -->
-    <main class="entity-list" id="entity-list">
+    <!-- لیست -->
+    <main class="entity-list">
       {pageError && <p class="empty-state">{pageError}</p>}
-      {entities.length === 0 && !pageError && (
-        <p class="empty-state">هنوز موردی ثبت نشده است.</p>
-      )}
+      {!pageError && entities.length === 0 && <p class="empty-state">هنوز موردی ثبت نشده است.</p>}
 
       {entities.map((entity) => {
         const color = getAvatarColor(entity.name);
         const initial = getInitial(entity.name);
         return (
-          <div class="entity-item" data-name={entity.name.toLowerCase()}>
-            <!-- ردیف اصلی -->
-            <button class="entity-row accordion-trigger" type="button" aria-expanded="false">
+          <div class="entity-item" data-id={entity.id} data-search={entity.name.toLowerCase()}>
+
+            <button class="entity-row" type="button" aria-expanded="false">
               <!-- آواتار -->
-              <div class="avatar" style={`background:${color}`}>
+              <div class="avatar" style={`--av:${color}`}>
                 {entity.avatar_url
-                  ? <img src={entity.avatar_url} alt={entity.name} />
-                  : <span>{initial}</span>
-                }
+                  ? <img src={entity.avatar_url} alt={entity.name} loading="lazy" />
+                  : <span>{initial}</span>}
               </div>
-              <!-- اطلاعات -->
+
+              <!-- متا -->
               <div class="entity-meta">
                 <span class="entity-name">
                   {entity.name}
-                  {entity.is_verified && <i class="fa-solid fa-circle-check verified"></i>}
+                  {entity.is_verified && <i class="fa-solid fa-circle-check verified-badge"></i>}
                 </span>
+                {entity.title && (
+                  <span class="entity-title">{entity.title}</span>
+                )}
                 {entity.description && (
-                  <span class="entity-desc">{entity.description}</span>
+                  <span class="entity-preview">{entity.description}</span>
                 )}
               </div>
-              <!-- فلش -->
-              <i class="fa-solid fa-chevron-down arrow-icon"></i>
+
+              <i class="fa-solid fa-chevron-down chevron"></i>
             </button>
 
             <!-- آکاردئون -->
-            <div class="accordion-body">
-              <div class="accordion-inner">
+            <div class="acc-body">
+              <div class="acc-inner">
                 {entity.description && (
                   <p class="acc-bio">{entity.description}</p>
                 )}
-                <div class="social-links">
-                  {entity.links.length > 0 ? (
-                    entity.links.map((link) => {
-                      const p = getPlatform(link.platform);
-                      return (
-                        <a
-                          href={link.url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          class="social-chip"
-                          style={`--chip-color: ${p.color}`}
-                        >
-                          <i class={`${p.brand ? 'fa-brands' : 'fa-solid'} ${p.icon}`}></i>
-                          <span>{p.label}</span>
-                        </a>
-                      );
-                    })
-                  ) : (
-                    <p class="no-links">لینکی ثبت نشده.</p>
-                  )}
-                </div>
+
+                <!-- آیکون‌های شبکه اجتماعی — اسکرول افقی -->
+                {entity.links.length > 0 && (
+                  <div class="social-scroll-wrap">
+                    <div class="social-scroll" data-scroll-id={entity.id}>
+                      {entity.links.map((link) => {
+                        const p = getPlatform(link.platform);
+                        return (
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            class="social-icon-btn"
+                            style={`--pc:${p.color}`}
+                            title={p.label}
+                            aria-label={p.label}
+                          >
+                            <i class={`${p.brand ? 'fa-brands' : 'fa-solid'} ${p.icon}`}></i>
+                          </a>
+                        );
+                      })}
+                    </div>
+                    <!-- فلش‌های اسکرول -->
+                    <button class="scroll-arrow scroll-arrow--right" type="button" data-dir="right" data-target={entity.id} aria-label="بیشتر">
+                      <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="scroll-arrow scroll-arrow--left" type="button" data-dir="left" data-target={entity.id} aria-label="قبلی">
+                      <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                  </div>
+                )}
+
+                {entity.links.length === 0 && <p class="no-links">لینکی ثبت نشده است.</p>}
+
                 <div class="acc-actions">
-                  <button class="acc-btn report-btn" type="button"
-                    data-name={entity.name} data-links={entity.links.map(l=>l.url).join(',')}>
+                  <button class="action-btn report-btn" type="button" data-name={entity.name}>
                     <i class="fa-solid fa-triangle-exclamation"></i> گزارش خرابی
                   </button>
-                  <button class="acc-btn share-btn" type="button"
-                    data-name={entity.name} data-url={`${Astro.url.origin}/${slug}`}>
+                  <button class="action-btn share-btn" type="button"
+                    data-name={entity.name} data-url={Astro.url.href}>
                     <i class="fa-solid fa-share-nodes"></i> اشتراک‌گذاری
                   </button>
                 </div>
               </div>
             </div>
 
-            <div class="item-divider"></div>
+            <div class="divider"></div>
           </div>
         );
       })}
@@ -223,140 +202,100 @@ function getInitial(name: string): string {
         <i class="fa-solid fa-house"></i>
         <span>خانه</span>
       </a>
-      <button class="nav-item" id="bottom-search-btn" type="button">
+      <button class="nav-item" id="nav-search" type="button">
         <i class="fa-solid fa-magnifying-glass"></i>
         <span>جستجو</span>
       </button>
-      <button class="nav-item" id="bottom-share-page" type="button">
-        <i class="fa-solid fa-share-nodes"></i>
-        <span>اشتراک</span>
+      <button class="nav-item" id="nav-theme" type="button">
+        <i class="fa-solid fa-circle-half-stroke"></i>
+        <span>تم</span>
       </button>
     </nav>
 
-    <!-- FAB دکمه + -->
-    <div class="fab-wrap">
-      <div class="fab-menu" id="fab-menu">
-        {allCategories.map((cat) => (
-          <a href={`/${cat.slug}`} class={`fab-item ${cat.slug === slug ? 'fab-item--active' : ''}`}>
-            <i class={`fa-solid ${cat.icon_name || 'fa-folder'}`}></i>
-            <span>{cat.name}</span>
-          </a>
-        ))}
+    <!-- Edge Menu -->
+    <div class="edge-backdrop" id="edge-backdrop"></div>
+    <div class="edge-panel" id="edge-panel">
+      <!-- تب بیرون‌زده -->
+      <div class="edge-tab" id="edge-tab" aria-label="دسته‌بندی‌ها">
+        <i class="fa-solid fa-table-cells-large"></i>
       </div>
-      <button class="fab-btn" id="fab-btn" type="button" aria-label="دسته‌بندی‌ها">
-        <i class="fa-solid fa-plus" id="fab-icon"></i>
-      </button>
+      <!-- لیست دسته‌ها -->
+      <div class="edge-cats" id="edge-cats">
+        <button class="edge-arrow edge-arrow--up" id="edge-up" type="button">
+          <i class="fa-solid fa-chevron-up"></i>
+        </button>
+        <div class="edge-cats-scroll" id="edge-scroll">
+          {allCategories.map((cat) => (
+            <a
+              href={`/${cat.slug}`}
+              class={`edge-cat-item${cat.slug === slug ? " edge-cat--active" : ""}`}
+              data-name={cat.name}
+              data-slug={cat.slug}
+            >
+              <i class={`fa-solid ${cat.icon_name || "fa-folder"}`}></i>
+              <!-- حباب اسم -->
+              <span class="edge-tooltip">{cat.name}</span>
+            </a>
+          ))}
+        </div>
+        <button class="edge-arrow edge-arrow--down" id="edge-down" type="button">
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+      </div>
     </div>
 
-    <!-- backdrop برای FAB -->
-    <div class="fab-backdrop" id="fab-backdrop"></div>
+    <!-- Bottom Sheet جستجو -->
+    <div class="bs-backdrop" id="bs-backdrop"></div>
+    <div class="bottom-sheet" id="bottom-sheet" role="dialog" aria-modal="true">
+      <div class="bs-handle"></div>
+      <div class="bs-search-row">
+        <i class="fa-solid fa-magnifying-glass bs-search-icon"></i>
+        <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" />
+        <button id="bs-clear" class="bs-clear-btn" type="button" style="display:none">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="bs-filters">
+        <button class="bs-filter active" data-filter="all" type="button">همه</button>
+        <button class="bs-filter" data-filter="entity" type="button">اشخاص</button>
+        <button class="bs-filter" data-filter="platform" type="button">پلتفرم</button>
+      </div>
+      <div class="bs-results" id="bs-results">
+        <p class="bs-hint">برای جستجو تایپ کن...</p>
+      </div>
+    </div>
 
   </div>
 </Layout>
 
 <style>
-  * { box-sizing: border-box; }
+  *, *::before, *::after { box-sizing: border-box; }
 
   .page-shell {
     max-width: 680px;
     margin: 0 auto;
-    padding-bottom: 80px;
     min-height: 100vh;
+    padding-bottom: 72px;
     position: relative;
   }
 
   /* ——— هدر ——— */
   .page-header {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
+    padding: 28px 20px 18px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
   }
-
-  .back-btn, .icon-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: none;
-    border: none;
-    color: var(--text-main);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    flex-shrink: 0;
-    text-decoration: none;
-    transition: background 0.15s;
-  }
-  .back-btn:hover, .icon-btn:hover {
-    background: color-mix(in srgb, var(--primary) 10%, transparent);
-  }
-
-  .header-info {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-  }
-
-  .header-cat-icon {
-    font-size: 18px;
-    color: var(--primary);
-  }
-
   .page-title {
-    font-size: 16px;
+    font-size: 26px;
     font-weight: 900;
     color: var(--text-main);
     margin: 0;
-  }
-
-  .page-count {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin: 0;
-  }
-
-  /* ——— جستجو ——— */
-  .search-bar-wrap {
-    overflow: hidden;
-    max-height: 0;
-    transition: max-height 0.25s ease;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
-  .search-bar-wrap.open { max-height: 64px; }
-
-  .search-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    color: var(--text-dim);
-  }
-
-  .search-bar input {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    font-size: 14px;
-    color: var(--text-main);
-    font-family: inherit;
+    letter-spacing: 0.28em;
+    text-align: center;
   }
 
   /* ——— لیست ——— */
-  .entity-list {
-    padding: 0;
-  }
-
+  .entity-list { padding: 0; }
   .entity-item { position: relative; }
 
   .entity-row {
@@ -364,23 +303,21 @@ function getInitial(name: string): string {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 10px 16px;
+    padding: 12px 16px;
     background: none;
     border: none;
     cursor: pointer;
     text-align: right;
     transition: background 0.12s;
   }
-  .entity-row:hover {
-    background: color-mix(in srgb, var(--primary) 5%, transparent);
-  }
+  .entity-row:active { background: color-mix(in srgb, var(--primary) 6%, transparent); }
 
-  /* آواتار */
   .avatar {
     width: 50px;
     height: 50px;
     border-radius: 50%;
     flex-shrink: 0;
+    background: var(--av);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -389,18 +326,14 @@ function getInitial(name: string): string {
     color: #fff;
     overflow: hidden;
   }
-  .avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
   .entity-meta {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    min-width: 0;
+    gap: 2px;
     text-align: right;
   }
 
@@ -412,13 +345,9 @@ function getInitial(name: string): string {
     align-items: center;
     gap: 5px;
   }
+  .verified-badge { color: #3b9eff; font-size: 12px; }
 
-  .verified {
-    color: #3b9eff;
-    font-size: 12px;
-  }
-
-  .entity-desc {
+  .entity-preview {
     font-size: 12px;
     color: var(--text-dim);
     white-space: nowrap;
@@ -426,91 +355,114 @@ function getInitial(name: string): string {
     text-overflow: ellipsis;
   }
 
-  .arrow-icon {
-    font-size: 12px;
+  .entity-title {
+    font-size: 11px;
+    color: var(--primary);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chevron {
+    font-size: 11px;
     color: var(--text-dim);
     flex-shrink: 0;
     transition: transform 0.25s ease;
   }
+  .entity-item.open .chevron { transform: rotate(180deg); }
 
-  .entity-item.open .arrow-icon {
-    transform: rotate(180deg);
-  }
-
-  .item-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 0 16px 0 16px;
-    opacity: 0.5;
-  }
+  .divider { height: 1px; background: var(--border); margin: 0 16px; opacity: 0.4; }
 
   /* ——— آکاردئون ——— */
-  .accordion-body {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.25s ease;
-  }
-  .entity-item.open .accordion-body {
-    grid-template-rows: 1fr;
-  }
-  .accordion-inner {
-    overflow: hidden;
-    padding: 0 16px;
-  }
-  .entity-item.open .accordion-inner {
-    padding: 0 16px 14px;
-  }
+  .acc-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s ease; }
+  .entity-item.open .acc-body { grid-template-rows: 1fr; }
+  .acc-inner { overflow: hidden; padding: 0 16px; }
+  .entity-item.open .acc-inner { padding: 6px 16px 14px; }
 
   .acc-bio {
     font-size: 13px;
     color: var(--text-dim);
-    line-height: 1.6;
-    margin: 0 0 12px;
-    padding-top: 4px;
+    line-height: 1.7;
+    margin: 0 0 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
   }
 
-  .social-links {
+  /* ——— آیکون‌های شبکه اجتماعی ——— */
+  .social-scroll-wrap {
+    position: relative;
+    margin-bottom: 14px;
+  }
+
+  .social-scroll {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding: 4px 2px 8px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
+  .social-scroll::-webkit-scrollbar { display: none; }
 
-  .social-chip {
+  .social-icon-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    background: color-mix(in srgb, var(--chip-color) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--chip-color) 35%, transparent);
-    color: var(--chip-color);
-    text-decoration: none;
-    font-size: 12px;
-    font-weight: 700;
-    transition: background 0.15s, transform 0.15s;
-  }
-  .social-chip:hover {
-    background: color-mix(in srgb, var(--chip-color) 22%, transparent);
-    transform: translateY(-1px);
-  }
-  .social-chip i { font-size: 14px; }
-
-  .no-links {
-    font-size: 12px;
+    justify-content: center;
+    font-size: 20px;
     color: var(--text-dim);
-    margin: 0;
+    background: color-mix(in srgb, var(--text-dim) 8%, transparent);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
   }
+  .social-icon-btn:hover {
+    color: var(--pc);
+    background: color-mix(in srgb, var(--pc) 12%, transparent);
+    border-color: color-mix(in srgb, var(--pc) 40%, transparent);
+    transform: translateY(-2px);
+  }
+
+  /* فلش‌های اسکرول */
+  .scroll-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-60%);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    box-shadow: 0 2px 8px color-mix(in srgb,#000 12%,transparent);
+    z-index: 2;
+  }
+  .scroll-arrow.visible { opacity: 1; pointer-events: auto; }
+  .scroll-arrow--right { right: 0; }
+  .scroll-arrow--left  { left: 0; }
+
+  .no-links { font-size: 12px; color: var(--text-dim); margin: 0 0 12px; }
 
   .acc-actions {
     display: flex;
     gap: 8px;
-    padding-top: 4px;
     border-top: 1px solid var(--border);
-    margin-top: 4px;
+    padding-top: 10px;
   }
-
-  .acc-btn {
+  .action-btn {
     flex: 1;
     display: flex;
     align-items: center;
@@ -525,26 +477,27 @@ function getInitial(name: string): string {
     font-weight: 700;
     cursor: pointer;
     font-family: inherit;
-    transition: background 0.15s, color 0.15s;
+    transition: color 0.15s, border-color 0.15s;
   }
   .report-btn:hover { color: #ff5252; border-color: #ff5252; }
-  .share-btn:hover { color: var(--primary); border-color: var(--primary); }
+  .share-btn:hover  { color: var(--primary); border-color: var(--primary); }
+
+  .empty-state { text-align: center; color: var(--text-dim); font-size: 13px; padding: 48px 16px; }
 
   /* ——— منوی پایین ——— */
   .bottom-nav {
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
     max-width: 680px;
-    margin: 0 auto;
     display: flex;
     background: var(--surface);
     border-top: 1px solid var(--border);
     z-index: 40;
     padding-bottom: env(safe-area-inset-bottom);
   }
-
   .nav-item {
     flex: 1;
     display: flex;
@@ -563,181 +516,546 @@ function getInitial(name: string): string {
     font-family: inherit;
     transition: color 0.15s;
   }
-  .nav-item i { font-size: 18px; }
-  .nav-item:hover, .nav-item.active { color: var(--primary); }
+  .nav-item i { font-size: 19px; }
+  .nav-item:hover { color: var(--primary); }
 
-  /* ——— FAB ——— */
-  .fab-wrap {
+  /* ——— Edge Menu ——— */
+  .edge-backdrop {
     position: fixed;
-    bottom: 72px;
-    left: 20px;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
     z-index: 50;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
   }
+  .edge-backdrop.open { opacity: 1; pointer-events: auto; }
 
-  .fab-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
+  .edge-panel {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%) translateX(calc(-100% + 28px));
+    z-index: 51;
+    display: flex;
+    align-items: center;
+    transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .edge-panel.open { transform: translateY(-50%) translateX(0); }
+
+  .edge-tab {
+    width: 28px;
+    height: 64px;
     background: var(--primary);
-    border: none;
-    color: #fff;
-    font-size: 20px;
+    border-radius: 0 14px 14px 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #fff;
+    font-size: 13px;
     cursor: pointer;
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 45%, transparent);
-    transition: transform 0.25s ease, box-shadow 0.25s;
-    order: 2;
+    flex-shrink: 0;
+    box-shadow: 3px 0 14px color-mix(in srgb, var(--primary) 45%, transparent);
+    position: relative;
+    z-index: 1;
   }
-  .fab-btn:hover { transform: scale(1.08); }
-  .fab-btn.open { transform: rotate(45deg); }
 
-  .fab-menu {
+  .edge-cats {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 16px 16px 0;
+    padding: 4px 6px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    order: 1;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(10px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
-  }
-  .fab-menu.open {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
+    align-items: center;
+    gap: 2px;
+    max-height: 65vh;
+    box-shadow: 4px 0 20px color-mix(in srgb, #000 15%, transparent);
+    min-width: 60px;
   }
 
-  .fab-item {
+  .edge-cats-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    flex: 1;
+    padding: 2px 0;
+  }
+  .edge-cats-scroll::-webkit-scrollbar { display: none; }
+
+  /* فلش بالا/پایین */
+  .edge-arrow {
+    width: 32px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 6px;
+    flex-shrink: 0;
+    transition: color 0.15s, opacity 0.2s;
+  }
+  .edge-arrow:hover { color: var(--primary); }
+  .edge-arrow.hidden { opacity: 0; pointer-events: none; }
+
+  /* آیتم دسته */
+  .edge-cat-item {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .edge-cat-item:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); }
+  .edge-cat--active { color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, transparent); }
+
+  /* حباب اسم — سمت راست آیکون */
+  .edge-tooltip {
+    position: absolute;
+    right: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    box-shadow: 0 2px 10px color-mix(in srgb,#000 15%,transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+  }
+  .edge-cat-item.show-tip .edge-tooltip { opacity: 1; }
+
+  /* ——— Bottom Sheet ——— */
+  .bs-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 60;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .bs-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  .bottom-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    width: 100%;
+    max-width: 680px;
+    height: 82vh;
+    background: var(--surface);
+    border-radius: 22px 22px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    z-index: 61;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottom-sheet.open { transform: translateX(-50%) translateY(0); }
+
+  .bs-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 4px;
+    margin: 12px auto 10px;
+    flex-shrink: 0;
+  }
+
+  .bs-search-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 14px 8px 10px;
-    background: var(--surface);
+    margin: 0 16px 12px;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--text-dim) 8%, transparent);
+    border-radius: 14px;
     border: 1px solid var(--border);
-    border-radius: 24px;
+    flex-shrink: 0;
+  }
+  .bs-search-icon { color: var(--text-dim); font-size: 14px; }
+  .bs-search-row input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 14px;
     color: var(--text-main);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 700;
-    white-space: nowrap;
-    box-shadow: 0 2px 10px color-mix(in srgb, #000 12%, transparent);
-    transition: border-color 0.15s, color 0.15s;
+    font-family: inherit;
+    direction: rtl;
   }
-  .fab-item i { color: var(--primary); font-size: 15px; }
-  .fab-item:hover, .fab-item--active {
-    border-color: var(--primary);
-    color: var(--primary);
-  }
+  .bs-clear-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; padding: 2px; }
 
-  .fab-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 45;
-    display: none;
+  .bs-filters {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 12px;
+    flex-shrink: 0;
   }
-  .fab-backdrop.open { display: block; }
-
-  .empty-state {
+  .bs-filter {
+    padding: 6px 18px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: none;
     color: var(--text-dim);
-    font-size: 13px;
-    padding: 40px 16px;
-    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
   }
+  .bs-filter.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  .bs-results { flex: 1; overflow-y: auto; padding-bottom: 16px; }
+
+  .bs-hint { text-align: center; color: var(--text-dim); font-size: 13px; padding: 32px 16px; margin: 0; }
+  .bs-no-result { text-align: center; color: var(--text-dim); font-size: 13px; padding: 32px 16px; margin: 0; }
+  .bs-section-title { font-size: 11px; font-weight: 800; color: var(--text-dim); padding: 10px 16px 4px; letter-spacing: 0.05em; margin: 0; }
+  .bs-divider { height: 1px; background: var(--border); margin: 0 16px; opacity: 0.4; }
+
+  .bs-entity-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .bs-entity-card:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+
+  .bs-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    font-weight: 900;
+    color: #fff;
+    overflow: hidden;
+  }
+  .bs-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+  .bs-entity-name { font-size: 13px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 4px; }
+  .bs-entity-sub  { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  .bs-link-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    text-decoration: none;
+    transition: background 0.12s;
+  }
+  .bs-link-card:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+
+  .bs-link-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .bs-link-platform { font-size: 11px; color: var(--text-dim); }
+  .bs-link-name { font-size: 13px; font-weight: 800; color: var(--text-main); }
 </style>
 
-<script is:inline>
+<script is:inline define:vars={{ searchData, currentSlug: slug }}>
+  // ——— تم ———
+  const html = document.documentElement;
+  const saved = localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") html.setAttribute("data-theme", saved);
+  document.getElementById("nav-theme")?.addEventListener("click", () => {
+    const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
+    html.setAttribute("data-theme", next);
+    localStorage.setItem("theme", next);
+  });
+
   // ——— آکاردئون ———
-  const items = document.querySelectorAll(".entity-item");
-  items.forEach((item) => {
-    const trigger = item.querySelector(".accordion-trigger");
-    trigger?.addEventListener("click", () => {
+  document.querySelectorAll(".entity-item").forEach((item) => {
+    item.querySelector(".entity-row")?.addEventListener("click", () => {
       const isOpen = item.classList.contains("open");
-      items.forEach((i) => {
+      document.querySelectorAll(".entity-item").forEach((i) => {
         i.classList.remove("open");
-        i.querySelector(".accordion-trigger")?.setAttribute("aria-expanded", "false");
+        i.querySelector(".entity-row")?.setAttribute("aria-expanded", "false");
       });
       if (!isOpen) {
         item.classList.add("open");
-        trigger.setAttribute("aria-expanded", "true");
+        item.querySelector(".entity-row")?.setAttribute("aria-expanded", "true");
+        // آپدیت فلش‌های اسکرول
+        const id = item.getAttribute("data-id");
+        setTimeout(() => updateScrollArrows(id), 300);
       }
     });
   });
 
-  // ——— جستجو ———
-  const searchWrap = document.getElementById("search-wrap");
-  const searchInput = document.getElementById("search-input");
-  const entityList = document.getElementById("entity-list");
-
-  function toggleSearch() {
-    searchWrap?.classList.toggle("open");
-    if (searchWrap?.classList.contains("open")) searchInput?.focus();
-    else { if (searchInput) searchInput.value = ""; filterEntities(""); }
+  // ——— اسکرول افقی آیکون‌ها ———
+  function updateScrollArrows(entityId) {
+    const scroll = document.querySelector(`.social-scroll[data-scroll-id="${entityId}"]`);
+    if (!scroll) return;
+    const arrowR = document.querySelector(`.scroll-arrow--right[data-target="${entityId}"]`);
+    const arrowL = document.querySelector(`.scroll-arrow--left[data-target="${entityId}"]`);
+    if (arrowR) arrowR.classList.toggle("visible", scroll.scrollLeft < scroll.scrollWidth - scroll.clientWidth - 4);
+    if (arrowL) arrowL.classList.toggle("visible", scroll.scrollLeft > 4);
   }
 
-  document.getElementById("search-btn")?.addEventListener("click", toggleSearch);
-  document.getElementById("bottom-search-btn")?.addEventListener("click", toggleSearch);
+  document.querySelectorAll(".social-scroll").forEach((scroll) => {
+    const id = scroll.getAttribute("data-scroll-id");
+    scroll.addEventListener("scroll", () => updateScrollArrows(id));
+  });
 
-  function filterEntities(query) {
-    const q = query.toLowerCase().trim();
-    document.querySelectorAll(".entity-item").forEach((item) => {
-      const name = item.getAttribute("data-name") ?? "";
-      item.style.display = !q || name.includes(q) ? "" : "none";
+  document.querySelectorAll(".scroll-arrow").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id  = btn.getAttribute("data-target");
+      const dir = btn.getAttribute("data-dir");
+      const scroll = document.querySelector(`.social-scroll[data-scroll-id="${id}"]`);
+      if (scroll) scroll.scrollBy({ left: dir === "right" ? 120 : -120, behavior: "smooth" });
     });
+  });
+
+  // ——— Edge Menu ———
+  const edgePanel    = document.getElementById("edge-panel");
+  const edgeBackdrop = document.getElementById("edge-backdrop");
+  const edgeTab      = document.getElementById("edge-tab");
+  const edgeScroll   = document.getElementById("edge-scroll");
+  const edgeUp       = document.getElementById("edge-up");
+  const edgeDown     = document.getElementById("edge-down");
+
+  function openEdge()  { edgePanel?.classList.add("open"); edgeBackdrop?.classList.add("open"); updateEdgeArrows(); }
+  function closeEdge() { edgePanel?.classList.remove("open"); edgeBackdrop?.classList.remove("open"); }
+
+  edgeTab?.addEventListener("click", () => edgePanel?.classList.contains("open") ? closeEdge() : openEdge());
+  edgeBackdrop?.addEventListener("click", closeEdge);
+
+  function updateEdgeArrows() {
+    if (!edgeScroll || !edgeUp || !edgeDown) return;
+    edgeUp.classList.toggle("hidden",   edgeScroll.scrollTop <= 4);
+    edgeDown.classList.toggle("hidden", edgeScroll.scrollTop >= edgeScroll.scrollHeight - edgeScroll.clientHeight - 4);
   }
 
-  searchInput?.addEventListener("input", (e) => filterEntities(e.target.value));
+  edgeScroll?.addEventListener("scroll", updateEdgeArrows);
+  edgeUp?.addEventListener("click",   () => { edgeScroll?.scrollBy({ top: -120, behavior: "smooth" }); });
+  edgeDown?.addEventListener("click", () => { edgeScroll?.scrollBy({ top:  120, behavior: "smooth" }); });
 
-  // ——— FAB ———
-  const fabBtn = document.getElementById("fab-btn");
-  const fabMenu = document.getElementById("fab-menu");
-  const fabBackdrop = document.getElementById("fab-backdrop");
-  const fabIcon = document.getElementById("fab-icon");
+  // حباب اسم + کلیک
+  document.querySelectorAll(".edge-cat-item").forEach((item) => {
+    let tipTimer = null;
 
-  function toggleFab() {
-    const isOpen = fabMenu?.classList.contains("open");
-    fabMenu?.classList.toggle("open", !isOpen);
-    fabBackdrop?.classList.toggle("open", !isOpen);
-    fabBtn?.classList.toggle("open", !isOpen);
+    function showTip() {
+      item.classList.add("show-tip");
+      clearTimeout(tipTimer);
+      tipTimer = setTimeout(() => item.classList.remove("show-tip"), 3000);
+    }
+
+    // hover دسکتاپ
+    item.addEventListener("mouseenter", showTip);
+    item.addEventListener("mouseleave", () => {
+      clearTimeout(tipTimer);
+      tipTimer = setTimeout(() => item.classList.remove("show-tip"), 500);
+    });
+
+    item.addEventListener("click", (e) => {
+      const href = item.getAttribute("href");
+      const isCurrent = item.getAttribute("data-slug") === currentSlug;
+
+      if (isCurrent) {
+        e.preventDefault();
+        showTip();
+        // اسکرول به مرکز
+        item.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+
+      // اول حباب نشون بده، بعد برو
+      e.preventDefault();
+      showTip();
+      item.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => { window.location.href = href; }, 350);
+    });
+  });
+
+  // ——— Bottom Sheet جستجو ———
+  const bsBackdrop  = document.getElementById("bs-backdrop");
+  const bottomSheet = document.getElementById("bottom-sheet");
+  const bsInput     = document.getElementById("bs-input");
+  const bsResults   = document.getElementById("bs-results");
+  const bsClear     = document.getElementById("bs-clear");
+
+  let activeFilter = "all";
+
+  function openBS() {
+    bottomSheet?.classList.add("open");
+    bsBackdrop?.classList.add("open");
+    setTimeout(() => bsInput?.focus(), 300);
+  }
+  function closeBS() {
+    bottomSheet?.classList.remove("open");
+    bsBackdrop?.classList.remove("open");
+    if (bsInput) bsInput.value = "";
+    if (bsClear) bsClear.style.display = "none";
+    renderResults("");
   }
 
-  fabBtn?.addEventListener("click", toggleFab);
-  fabBackdrop?.addEventListener("click", toggleFab);
+  document.getElementById("nav-search")?.addEventListener("click", openBS);
+  bsBackdrop?.addEventListener("click", closeBS);
 
-  // ——— اشتراک‌گذاری ———
-  document.querySelectorAll(".share-btn").forEach((btn) => {
+  document.querySelectorAll(".bs-filter").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".bs-filter").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeFilter = btn.getAttribute("data-filter") ?? "all";
+      renderResults(bsInput?.value ?? "");
+    });
+  });
+
+  bsInput?.addEventListener("input", (e) => {
+    const val = e.target.value;
+    if (bsClear) bsClear.style.display = val ? "block" : "none";
+    renderResults(val);
+  });
+
+  bsClear?.addEventListener("click", () => {
+    if (bsInput) bsInput.value = "";
+    bsClear.style.display = "none";
+    renderResults("");
+    bsInput?.focus();
+  });
+
+  function renderResults(query) {
+    if (!bsResults) return;
+    const q = query.trim().toLowerCase();
+    if (!q) { bsResults.innerHTML = '<p class="bs-hint">برای جستجو تایپ کن...</p>'; return; }
+
+    let entityResults = [];
+    let linkResults   = [];
+
+    if (activeFilter === "all" || activeFilter === "entity") {
+      entityResults = searchData.filter(e =>
+        e.name.toLowerCase().includes(q) ||
+        (e.description && e.description.toLowerCase().includes(q))
+      );
+    }
+
+    if (activeFilter === "all" || activeFilter === "platform") {
+      searchData.forEach(entity => {
+        entity.links.forEach(link => {
+          if (link.label.toLowerCase().includes(q) || link.platform.toLowerCase().includes(q)) {
+            linkResults.push({ ...link, entityName: entity.name, entityColor: entity.color, entityInitial: entity.initial, entityAvatar: entity.avatar_url });
+          }
+        });
+      });
+    }
+
+    if (!entityResults.length && !linkResults.length) {
+      bsResults.innerHTML = '<p class="bs-no-result">نتیجه‌ای یافت نشد.</p>';
+      return;
+    }
+
+    let out = "";
+
+    if (entityResults.length) {
+      if (activeFilter === "all") out += `<p class="bs-section-title">اشخاص و موسسات</p>`;
+      entityResults.forEach(e => {
+        const av = e.avatar_url
+          ? `<img src="${e.avatar_url}" alt="${e.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+          : e.initial;
+        out += `
+          <div class="bs-entity-card" onclick="scrollToEntity('${e.id}')">
+            <div class="bs-avatar" style="background:${e.color}">${av}</div>
+            <div>
+              <div class="bs-entity-name">
+                ${e.name}
+                ${e.is_verified ? '<i class="fa-solid fa-circle-check" style="color:#3b9eff;font-size:11px"></i>' : ''}
+              </div>
+              ${e.description ? `<div class="bs-entity-sub">${e.description}</div>` : ''}
+            </div>
+          </div>
+          <div class="bs-divider"></div>`;
+      });
+    }
+
+    if (linkResults.length) {
+      if (activeFilter === "all") out += `<p class="bs-section-title">لینک‌ها</p>`;
+      linkResults.forEach(l => {
+        out += `
+          <a href="${l.url}" target="_blank" rel="noreferrer noopener" class="bs-link-card">
+            <div class="bs-link-icon" style="background:color-mix(in srgb,${l.color} 14%,transparent);color:${l.color}">
+              <i class="${l.brand ? 'fa-brands' : 'fa-solid'} ${l.icon}"></i>
+            </div>
+            <div>
+              <div class="bs-link-platform">${l.label}</div>
+              <div class="bs-link-name">${l.entityName}</div>
+            </div>
+          </a>
+          <div class="bs-divider"></div>`;
+      });
+    }
+
+    bsResults.innerHTML = out;
+  }
+
+  window.scrollToEntity = function(id) {
+    closeBS();
+    setTimeout(() => {
+      const target = document.querySelector(`.entity-item[data-id="${id}"]`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (!target.classList.contains("open")) {
+        target.classList.add("open");
+        target.querySelector(".entity-row")?.setAttribute("aria-expanded", "true");
+        const entityId = target.getAttribute("data-id");
+        setTimeout(() => updateScrollArrows(entityId), 300);
+      }
+    }, 350);
+  };
+
+  // ——— گزارش و اشتراک ———
+  document.querySelectorAll(".report-btn").forEach(btn => {
+    btn.addEventListener("click", () => alert(`گزارش خرابی برای «${btn.getAttribute("data-name")}» ثبت شد.`));
+  });
+  document.querySelectorAll(".share-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const url = btn.getAttribute("data-url") ?? location.href;
       const name = btn.getAttribute("data-name") ?? "";
-      if (navigator.share) {
-        await navigator.share({ title: name, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-        alert("لینک کپی شد!");
-      }
-    });
-  });
-
-  // ——— اشتراک صفحه (منوی پایین) ———
-  document.getElementById("bottom-share-page")?.addEventListener("click", async () => {
-    if (navigator.share) {
-      await navigator.share({ title: document.title, url: location.href });
-    } else {
-      await navigator.clipboard.writeText(location.href);
-      alert("لینک صفحه کپی شد!");
-    }
-  });
-
-  // ——— گزارش خرابی ———
-  document.querySelectorAll(".report-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const name = btn.getAttribute("data-name") ?? "";
-      alert(`گزارش خرابی برای «${name}» ثبت شد. متشکریم!`);
+      try {
+        if (navigator.share) await navigator.share({ title: name, url });
+        else { await navigator.clipboard.writeText(url); alert("لینک کپی شد!"); }
+      } catch {}
     });
   });
 </script>

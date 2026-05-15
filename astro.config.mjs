@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
-import vercel from '@astrojs/vercel/serverless';
+import cloudflare from '@astrojs/cloudflare';
 
 export default defineConfig({
-  output: 'server',
-  adapter: vercel(),
+  output: 'server', // یا 'hybrid' بسته به نیاز پروژه‌ات
+  adapter: cloudflare(),
 });

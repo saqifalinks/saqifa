@@ -1,0 +1,776 @@
+---
+export const prerender = false;
+
+import Layout from '../layouts/Layout.astro';
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { getCategoryIcon, getPlatformInfo } from "../lib/config";
+
+const SB_URL = import.meta.env.SUPABASE_URL;
+const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
+
+type Category = { id: number; name: string; slug: string; icon_name: string; };
+type Link     = { id: string; platform: string; url: string; display_order: number; };
+type Entity   = { id: string; name: string; title: string | null; description: string | null; avatar_url: string | null; verification_type: string | null; links: Link[]; };
+type FilterOpt = { id: number; value: string; display_order: number; };
+type CatFilter = { id: number; name: string; slug: string; options: FilterOpt[]; };
+
+let category: Category | null = null;
+let entities: Entity[] = [];
+let allCategories: Category[] = [];
+let filtersList: CatFilter[] = [];
+let activeFilters: Record<string, string> = {};
+let pageError = "";
+
+if (isSupabaseConfigured && supabase) {
+  try {
+    const [{ data: catData, error: catError }, { data: allCats }] = await Promise.all([
+      supabase.from("categories").select("id,name,slug,icon_name").eq("name", "مناطق").single(),
+      supabase.from("categories").select("id,name,slug,icon_name").order("display_order", { ascending: true }),
+    ]);
+
+    allCategories = (allCats ?? []) as Category[];
+
+    if (catError || !catData) {
+      pageError = "دسته‌بندی یافت نشد.";
+    } else {
+      category = catData as Category;
+
+      const { data: cfData } = await supabase
+        .from("category_filters")
+        .select("filter_id")
+        .eq("category_id", category.id)
+        .eq("is_active", true);
+
+      if (cfData && cfData.length > 0) {
+        const fIds = cfData.map((r: any) => r.filter_id);
+        const [{ data: fData }, { data: foData }] = await Promise.all([
+          supabase.from("filters").select("id, name, slug").in("id", fIds).order("display_order", { ascending: true }),
+          supabase.from("filter_options").select("id, filter_id, value, display_order").in("filter_id", fIds).order("display_order", { ascending: true }),
+        ]);
+        filtersList = (fData ?? []).map((f: any) => ({
+          id: f.id, name: f.name, slug: f.slug,
+          options: (foData ?? []).filter((o: any) => o.filter_id === f.id).sort((a: FilterOpt, b: FilterOpt) => a.display_order - b.display_order),
+        }));
+      }
+
+      for (const f of filtersList) {
+        const val = Astro.url.searchParams.get(f.slug);
+        if (val) activeFilters[f.slug] = val;
+      }
+
+      let entityQuery = supabase
+        .from("entities")
+        .select("id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order)")
+        .eq("category_id", category.id);
+
+      const filterKeys = Object.keys(activeFilters);
+      if (filterKeys.length > 0) {
+        const matchedFilters = filtersList.filter(f => activeFilters[f.slug]);
+        const allFilteredIds: string[][] = [];
+
+        for (const mf of matchedFilters) {
+          const optId = parseInt(activeFilters[mf.slug]);
+          const { data: evData } = await supabase
+            .from("entity_filter_values")
+            .select("entity_id")
+            .eq("filter_option_id", optId);
+          const ids = (evData ?? []).map((r: any) => r.entity_id);
+          allFilteredIds.push(ids);
+        }
+
+        let finalIds: string[] = allFilteredIds[0] ?? [];
+        for (let i = 1; i < allFilteredIds.length; i++) {
+          finalIds = finalIds.filter(id => allFilteredIds[i].includes(id));
+        }
+
+        if (finalIds.length > 0) {
+          entityQuery = entityQuery.in("id", finalIds);
+        } else {
+          entityQuery = entityQuery.in("id", [0]);
+        }
+      }
+
+      entityQuery = entityQuery.order("created_at", { ascending: true });
+
+      const { data: entitiesData, error: entitiesError } = await entityQuery;
+
+      if (entitiesError) {
+        pageError = "خطا در دریافت اطلاعات.";
+      } else {
+        entities = (entitiesData ?? []).map((e: any) => ({
+          ...e,
+          links: (e.links ?? []).sort((a: Link, b: Link) => a.display_order - b.display_order),
+        }));
+      }
+    }
+  } catch {
+    pageError = "خطا در ارتباط با دیتابیس.";
+  }
+}
+
+const avatarColors = ["#5C6BC0","#26A69A","#EC407A","#AB47BC","#42A5F5","#FF7043","#66BB6A","#FF8F00"];
+function getAvatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return avatarColors[Math.abs(h) % avatarColors.length];
+}
+function getInitial(name: string) { return name?.trim()?.[0] ?? "؟"; }
+
+const searchData = entities.map(e => ({
+  id: e.id,
+  name: e.name,
+  title: e.title ?? "",
+  description: e.description ?? "",
+  avatar_url: e.avatar_url,
+  color: getAvatarColor(e.name),
+  initial: getInitial(e.name),
+  verification_type: e.verification_type,
+  links: e.links.map(l => ({ url: l.url, platform: l.platform, ...getPlatformInfo(l.platform) })),
+}));
+---
+
+<Layout title={category ? `${category.name} — سَقِیفَه` : "سَقِیفَه"}>
+  <div class="page-shell">
+
+    <!-- هدر -->
+    <header class="page-header">
+      <h1 class="page-title">{category?.name ?? "مناطق"}</h1>
+    </header>
+
+    <!-- فیلترها -->
+    {filtersList.length > 0 && (
+      <div class="filter-bar">
+        {filtersList.map(f => (
+          <div class="filter-group">
+            <span class="filter-label">{f.name}</span>
+            <div class="fscroll-wrap">
+              <div class="filter-options" data-fscroll={f.slug}>
+                <a href={`/regions`}
+                  class={`filter-chip${!activeFilters[f.slug] ? " active" : ""}`}>
+                  همه
+                </a>
+                {f.options.map(o => (
+                  <a href={`/regions?${f.slug}=${o.id}`}
+                    class={`filter-chip${activeFilters[f.slug] === String(o.id) ? " active" : ""}`}>
+                    {o.value}
+                  </a>
+                ))}
+              </div>
+              <button class="fscroll-arr fscroll-arr--r" data-fdir="right" data-fscroll={f.slug} type="button" aria-label="بعدی">
+                <span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span>
+              </button>
+              <button class="fscroll-arr fscroll-arr--l" data-fdir="left" data-fscroll={f.slug} type="button" aria-label="قبلی">
+                <span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    <!-- لیست -->
+    <main class="entity-list">
+      {pageError && <p class="empty-state">{pageError}</p>}
+      {!pageError && entities.length === 0 && <p class="empty-state">هنوز موردی ثبت نشده است.</p>}
+
+      {entities.map((entity) => {
+        const color = getAvatarColor(entity.name);
+        const initial = getInitial(entity.name);
+        return (
+          <div class="entity-item glass-card" data-id={entity.id} data-search={entity.name.toLowerCase()}>
+
+            <button class="entity-row" type="button" aria-expanded="false">
+              <div class="avatar" style={`--av:${color}`}>
+                {entity.avatar_url
+                  ? <img src={entity.avatar_url} alt={entity.name} loading="lazy" />
+                  : <span>{initial}</span>}
+              </div>
+
+              <div class="entity-meta">
+                <span class="entity-name">
+                  {entity.name}
+                  {entity.verification_type === 'blue' && (
+                    <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#3b9eff"></span>
+                  )}
+                  {entity.verification_type === 'gold' && (
+                    <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#d4af37"></span>
+                  )}
+                </span>
+                {entity.title && <span class="entity-title">{entity.title}</span>}
+              </div>
+
+              <span class="iconify chevron" data-icon="ph:caret-down" data-width="14" data-height="14"></span>
+            </button>
+
+            <!-- آکاردئون -->
+            <div class="acc-body">
+              <div class="acc-inner">
+                {entity.description && <p class="acc-bio">{entity.description}</p>}
+
+                {entity.links.length > 0 && (
+                  <div class="social-scroll-wrap">
+                    <div class="social-scroll" data-scroll-id={entity.id}>
+                      {entity.links.map((link) => {
+                        const p = getPlatformInfo(link.platform);
+                        return (
+                          <a href={link.url} target="_blank" rel="noreferrer noopener"
+                            class="social-icon-btn" style={`--pc:${p.color}`}
+                            title={p.label} aria-label={p.label}>
+                            <span class="iconify" data-icon={p.icon} data-width="22" data-height="22"></span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                    <button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target={entity.id}>
+                      <span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span>
+                    </button>
+                    <button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target={entity.id}>
+                      <span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span>
+                    </button>
+                  </div>
+                )}
+
+                {entity.links.length === 0 && <p class="no-links">لینکی ثبت نشده است.</p>}
+
+                <div class="acc-actions">
+                  <button class="action-btn report-btn" type="button" data-name={entity.name}>
+                    <span class="iconify" data-icon="ph:warning" data-width="14" data-height="14"></span>
+                    گزارش خرابی
+                  </button>
+                  <button class="action-btn share-btn" type="button"
+                    data-entity={JSON.stringify({name:entity.name,title:entity.title,description:entity.description,links:entity.links.map(l=>({platform:l.platform,url:l.url}))})}>
+                    <span class="iconify" data-icon="ph:share-network" data-width="14" data-height="14"></span>
+                    اشتراک‌گذاری
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </main>
+
+    <!-- منوی پایین -->
+    <nav class="bottom-nav">
+      <a href="/" class="nav-item">
+        <span class="iconify" data-icon="ph:house" data-width="22" data-height="22"></span>
+        <span>خانه</span>
+      </a>
+      <button class="nav-item" id="nav-search" type="button">
+        <span class="iconify" data-icon="ph:magnifying-glass" data-width="22" data-height="22"></span>
+        <span>جستجو</span>
+      </button>
+      <button class="nav-item" id="nav-theme" type="button">
+        <span class="iconify" data-icon="ph:sun-bold" data-width="22" data-height="22"></span>
+        <span>تم</span>
+      </button>
+    </nav>
+
+    <!-- Edge Menu -->
+    <div class="edge-backdrop" id="edge-backdrop"></div>
+    <div class="edge-panel" id="edge-panel">
+      <div class="edge-tab" id="edge-tab">
+        <span class="iconify" data-icon="ph:squares-four" data-width="14" data-height="14"></span>
+      </div>
+      <div class="edge-cats" id="edge-cats">
+        <button class="edge-arrow" id="edge-up" type="button">
+          <span class="iconify" data-icon="ph:caret-up" data-width="12" data-height="12"></span>
+        </button>
+        <div class="edge-scroll" id="edge-scroll">
+          {allCategories.map((cat) => (
+            <a href={`/${cat.slug}`}
+              class={`edge-cat${cat.slug === "Regions" ? " edge-cat--active" : ""}`}
+              data-slug={cat.slug} data-name={cat.name}>
+              <span class="edge-label">{cat.name}</span>
+            </a>
+          ))}
+        </div>
+        <button class="edge-arrow" id="edge-down" type="button">
+          <span class="iconify" data-icon="ph:caret-down" data-width="12" data-height="12"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Sheet جستجو -->
+    <div class="bs-backdrop" id="bs-backdrop"></div>
+    <div class="bottom-sheet" id="bottom-sheet">
+      <div class="bs-handle"></div>
+      <div class="bs-search-row">
+        <span class="iconify" data-icon="ph:magnifying-glass" data-width="16" data-height="16" style="color:var(--text-dim)"></span>
+        <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" />
+        <button id="bs-clear" class="bs-clear-btn" type="button" style="display:none">
+          <span class="iconify" data-icon="ph:x" data-width="14" data-height="14"></span>
+        </button>
+      </div>
+      <div class="bs-filters">
+        <button class="bs-filter active" data-filter="all" type="button">همه</button>
+        <button class="bs-filter" data-filter="entity" type="button">اشخاص</button>
+        <button class="bs-filter" data-filter="platform" type="button">پلتفرم</button>
+      </div>
+      <div class="bs-results" id="bs-results">
+        <p class="bs-hint">برای جستجو تایپ کن...</p>
+      </div>
+    </div>
+
+  </div>
+</Layout>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .page-shell {
+    max-width: 680px;
+    margin: 0 auto;
+    display: flex; flex-direction: column;
+    position: relative; isolation: isolate;
+    padding-bottom: 72px;
+  }
+
+  /* ——— هدر ——— */
+  .page-header {
+    padding: 28px 20px 18px;
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .page-title {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text-main);
+    margin: 0;
+    letter-spacing: 0.28em;
+    text-align: center;
+  }
+
+  /* فیلتر */
+  .filter-bar  { padding: 12px 16px 10px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .filter-label { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-left: 4px; }
+  .fscroll-wrap { position: relative; display: flex; align-items: center; min-width: 0; width: 100%; }
+  .filter-options {
+    display: flex; gap: 4px; overflow-x: auto; scroll-behavior: smooth;
+    flex-wrap: nowrap; padding: 2px 0; min-width: 0; flex: 1;
+    -ms-overflow-style: none; scrollbar-width: none;
+  }
+  .filter-options::-webkit-scrollbar { display: none; }
+  .fscroll-arr {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 2; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .fscroll-arr.visible { opacity: 1; pointer-events: auto; }
+  .fscroll-arr:hover { color: var(--primary); border-color: var(--primary); }
+  .fscroll-arr--r { right: -12px; }
+  .fscroll-arr--l { left: -12px; }
+  .filter-chip {
+    display: inline-flex; padding: 6px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 800; text-decoration: none;
+    background: color-mix(in srgb,var(--surface) 80%,transparent);
+    border: 1px solid var(--border); color: var(--text-main);
+    transition: 0.15s;
+  }
+  .filter-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* لیست */
+  .entity-list { padding: 12px 16px 80px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+
+  .entity-item { border-radius: 18px; }
+  .entity-row {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 12px 16px; border: none; background: none; cursor: pointer;
+    font-family: inherit; font-size: inherit;
+  }
+  .entity-row[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+  .avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb,var(--primary) 12%,transparent);
+    color: var(--primary); font-weight: 900; font-size: 16px;
+    overflow: hidden;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .entity-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; text-align: right; }
+  .entity-name {
+    font-size: 14px; font-weight: 800; color: var(--text-main);
+    display: flex; align-items: center; gap: 3px; flex-wrap: wrap;
+  }
+  .verified-badge { flex-shrink: 0; }
+  .entity-title { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+  .chevron { margin-right: auto; color: var(--text-dim); transition: transform 0.2s; flex-shrink: 0; }
+
+  .acc-body { overflow: hidden; max-height: 0; transition: max-height 0.3s; }
+  .acc-inner { padding: 0 16px 14px; }
+  .acc-bio { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin: 0 0 10px; }
+
+  .social-scroll-wrap { position: relative; }
+  .social-scroll {
+    display: flex; gap: 6px; overflow-x: auto; scroll-behavior: smooth;
+    scrollbar-width: none; padding: 12px 2px;
+  }
+  .social-scroll::-webkit-scrollbar { display: none; }
+  .social-icon-btn {
+    flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb,var(--primary) 8%,transparent);
+    text-decoration: none; color: var(--text-main);
+    border: 1px solid var(--border); transition: 0.15s;
+  }
+  .social-icon-btn:hover { border-color: var(--pc); background: color-mix(in srgb,var(--pc) 10%,transparent); }
+  .scroll-arr {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 2;
+  }
+  .scroll-arr.visible { opacity: 1; pointer-events: auto; }
+  .scroll-arr--r { right: -24px; }
+  .scroll-arr--l { left: -24px; }
+
+  .no-links { font-size: 12px; color: var(--text-dim); text-align: center; padding: 6px 0; margin: 0 0 8px; }
+
+  .acc-actions { display: flex; gap: 8px; margin-top: 2px; }
+  .action-btn {
+    display: flex; align-items: center; gap: 4px; padding: 6px 12px;
+    border-radius: 10px; border: none; background: color-mix(in srgb,var(--surface) 80%,transparent);
+    cursor: pointer; font-size: 11px; font-weight: 700; font-family: inherit;
+    color: var(--text-dim); transition: 0.15s; border: 1px solid transparent;
+  }
+  .action-btn:hover { border-color: var(--border); }
+
+  .empty-state { text-align: center; padding: 60px 16px; color: var(--text-dim); font-weight: 700; }
+
+  /* منوی پایین */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    display: flex; border-top: 1px solid var(--border);
+    background: color-mix(in srgb,var(--bg) 85%,transparent);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 2px; padding: 8px 0 10px; border: none; background: none;
+    cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 700;
+    color: var(--text-dim); text-decoration: none;
+  }
+
+  /* Edge Menu */
+  .edge-backdrop {
+    position: fixed; inset: 0; z-index: 90; background: color-mix(in srgb,#000 30%,transparent);
+    display: none;
+  }
+  .edge-backdrop.open { display: block; }
+  .edge-panel {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 91;
+    background: var(--bg); border-radius: 24px 24px 0 0;
+    max-height: 60vh; display: flex; flex-direction: column;
+    transform: translateY(100%); transition: transform 0.3s;
+    box-shadow: 0 -4px 30px rgba(0,0,0,0.15);
+  }
+  .edge-panel.open { transform: translateY(0); }
+  .edge-tab {
+    display: flex; align-items: center; justify-content: center;
+    padding: 12px; cursor: pointer; color: var(--text-dim); flex-shrink: 0;
+  }
+  .edge-cats { display: flex; align-items: center; gap: 4px; padding: 0 8px 16px; flex-shrink: 0; }
+  .edge-arrow {
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--surface); cursor: pointer; display: flex;
+    align-items: center; justify-content: center; color: var(--text-dim); flex-shrink: 0;
+  }
+  .edge-scroll { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; }
+  .edge-scroll::-webkit-scrollbar { display: none; }
+  .edge-cat {
+    white-space: nowrap; padding: 8px 14px; border-radius: 20px; font-size: 13px;
+    font-weight: 700; text-decoration: none; color: var(--text-main); flex-shrink: 0;
+    background: color-mix(in srgb,var(--surface) 80%,transparent);
+    border: 1px solid var(--border); transition: 0.15s;
+  }
+  .edge-cat--active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* Bottom Sheet */
+  .bs-backdrop {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+  }
+  .bs-backdrop.open { opacity: 1; pointer-events: auto; }
+  .bottom-sheet {
+    position: fixed; bottom: 0; left: 50%; z-index: 61;
+    transform: translateX(-50%) translateY(100%);
+    width: 100%; max-width: 680px; height: 82vh;
+    background: var(--surface);
+    border-radius: 22px 22px 0 0;
+    border: 1px solid var(--border); border-bottom: none;
+    display: flex; flex-direction: column;
+    transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottom-sheet.open { transform: translateX(-50%) translateY(0); }
+  .bs-handle {
+    width: 40px; height: 4px; border-radius: 4px;
+    background: var(--border); margin: 12px auto 10px; flex-shrink: 0;
+  }
+  .bs-search-row {
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 16px 12px; padding: 10px 14px;
+    background: color-mix(in srgb,var(--text-dim) 8%,transparent);
+    border-radius: 12px; border: 1px solid var(--border);
+  }
+  .bs-search-row input {
+    flex: 1; border: none; background: none; font-family: inherit; font-size: 15px;
+    outline: none; padding: 0; color: var(--text-main);
+  }
+  .bs-clear-btn { background: none; border: none; cursor: pointer; color: var(--text-dim); padding: 4px; flex-shrink: 0; }
+  .bs-filters { display: flex; gap: 6px; padding: 0 16px 12px; flex-shrink: 0; }
+  .bs-filter {
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+    background: none; cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit;
+    color: var(--text-dim);
+  }
+  .bs-filter.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  :global(.bs-results) { flex: 1; overflow-y: auto; padding: 0 16px 24px; }
+  :global(.bs-hint) { text-align: center; color: var(--text-dim); font-size: 13px; padding: 20px 0; }
+  :global(.bs-result-item) {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px; min-height: 44px;
+    background: none; border: none; font-family: inherit; font-size: inherit;
+    cursor: pointer; width: 100%; text-align: right; color: var(--text-main);
+    transition: background 0.12s;
+  }
+  :global(.bs-result-item:hover) { background: color-mix(in srgb,var(--primary) 5%,transparent); }
+  :global(.bs-r-av) {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #fff;
+  }
+  :global(.bs-r-info) { flex: 1; min-width: 0; line-height: 1.4; }
+  :global(.bs-r-info strong) { font-size: 13px; }
+  :global(.bs-r-info small) { font-size: 11px; color: var(--text-dim); }
+
+  .copy-feedback {
+    position: fixed; z-index: 9999; background: var(--primary); color: #fff;
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; pointer-events: none;
+    transition: opacity 0.4s; white-space: nowrap;
+  }
+  .copy-feedback.fade-out { opacity: 0; }
+</style>
+
+<script is:inline define:vars={{ searchData, SB_URL, SB_KEY }}>
+  // آکاردئون
+  document.querySelectorAll(".entity-row").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const expanded=btn.getAttribute("aria-expanded")==="true";
+      btn.setAttribute("aria-expanded",!expanded);
+      const body=btn.nextElementSibling;
+      if (body) body.style.maxHeight=expanded?"0":body.scrollHeight+"px";
+      if (!expanded) {
+        const item = btn.closest(".entity-item");
+        if (item) setTimeout(() => updateScrollArrows(item.getAttribute("data-id")), 350);
+      }
+    });
+  });
+
+  // اسکرول افقی
+  function updateScrollArrows(id) {
+    const s = document.querySelector(`.social-scroll[data-scroll-id="${id}"]`);
+    if (!s) return;
+    const hasOverflow = s.scrollWidth > s.clientWidth + 2;
+    document.querySelector(`.scroll-arr--r[data-target="${id}"]`)?.classList.toggle("visible", hasOverflow);
+    document.querySelector(`.scroll-arr--l[data-target="${id}"]`)?.classList.toggle("visible", hasOverflow);
+  }
+
+  document.querySelectorAll(".social-scroll").forEach(s => {
+    s.addEventListener("scroll", () => updateScrollArrows(s.getAttribute("data-scroll-id")));
+  });
+
+  document.querySelectorAll(".scroll-arr").forEach(arr=>{
+    arr.addEventListener("click",()=>{
+      const target=document.querySelector(`[data-scroll-id="${arr.dataset.target}"]`);
+      if (!target) return;
+      const dir=arr.dataset.dir==="right"?1:-1;
+      target.scrollBy({left:dir*120,behavior:"smooth"});
+    });
+  });
+
+  // اسکرول فیلتر
+  function updateFScroll(fslug) {
+    const s=document.querySelector(`.filter-options[data-fscroll="${fslug}"]`);
+    if (!s) return;
+    const hasOverflow=s.scrollWidth>s.clientWidth+2;
+    document.querySelector(`.fscroll-arr--r[data-fscroll="${fslug}"]`)?.classList.toggle("visible",hasOverflow);
+    document.querySelector(`.fscroll-arr--l[data-fscroll="${fslug}"]`)?.classList.toggle("visible",hasOverflow);
+  }
+  document.querySelectorAll(".filter-options").forEach(s=>{
+    const fslug=s.getAttribute("data-fscroll");
+    if (!fslug) return;
+    s.addEventListener("scroll",()=>updateFScroll(fslug));
+    updateFScroll(fslug);
+  });
+  document.querySelectorAll(".fscroll-arr").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      const fslug=btn.getAttribute("data-fscroll");
+      const dir=btn.getAttribute("data-fdir");
+      const s=document.querySelector(`.filter-options[data-fscroll="${fslug}"]`);
+      if (s) s.scrollBy({left:dir==="right"?120:-120,behavior:"smooth"});
+    });
+  });
+
+  // اسکرول به چیپ فعال
+  const activeChip=document.querySelector(".filter-chip.active");
+  if (activeChip) setTimeout(()=>activeChip.scrollIntoView({behavior:"smooth",inline:"center",block:"nearest"}),150);
+
+  // Edge Menu
+  const edgeTab=document.getElementById("edge-tab");
+  const edgeBackdrop=document.getElementById("edge-backdrop");
+  const edgePanel=document.getElementById("edge-panel");
+  if(edgeTab&&edgeBackdrop&&edgePanel){
+    edgeTab.addEventListener("click",()=>{
+      const o=edgePanel.classList.contains("open");
+      edgePanel.classList.toggle("open"); edgeBackdrop.classList.toggle("open");
+    });
+    edgeBackdrop.addEventListener("click",()=>{
+      edgePanel.classList.remove("open"); edgeBackdrop.classList.remove("open");
+    });
+  }
+  document.getElementById("edge-up")?.addEventListener("click",()=>{
+    document.getElementById("edge-scroll")?.scrollBy({left:-200,behavior:"smooth"});
+  });
+  document.getElementById("edge-down")?.addEventListener("click",()=>{
+    document.getElementById("edge-scroll")?.scrollBy({left:200,behavior:"smooth"});
+  });
+
+  // جستجو
+  const bsBackdrop=document.getElementById("bs-backdrop");
+  const bottomSheet=document.getElementById("bottom-sheet");
+  const navSearch=document.getElementById("nav-search");
+  const bsInput=document.getElementById("bs-input");
+  const bsResults=document.getElementById("bs-results");
+  const bsClear=document.getElementById("bs-clear");
+  function openBS(){bottomSheet?.classList.add("open");bsBackdrop?.classList.add("open");setTimeout(()=>bsInput?.focus(),200);}
+  function closeBS(){bottomSheet?.classList.remove("open");bsBackdrop?.classList.remove("open");}
+  navSearch?.addEventListener("click",openBS);
+  bsBackdrop?.addEventListener("click",closeBS);
+  document.querySelectorAll(".bs-filter").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelectorAll(".bs-filter").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      if (bsInput) { bsInput.dispatchEvent(new Event("input")); }
+    });
+  });
+  bsClear?.addEventListener("click",()=>{
+    if(bsInput){bsInput.value="";bsInput.dispatchEvent(new Event("input"));bsInput.focus();}
+  });
+  bsInput?.addEventListener("input",()=>{
+    const q=bsInput.value.trim().toLowerCase();
+    const filter=document.querySelector(".bs-filter.active")?.dataset?.filter||"all";
+    if(!bsResults)return;
+    bsClear?.(q?{style:{display:""}}:{style:{display:"none"}});
+    if(q.length<2){bsResults.innerHTML='<p class="bs-hint">حداقل ۲ حرف تایپ کن...</p>';return;}
+    let results=searchData.filter(e=>{
+      if(filter==="entity") return e.name.toLowerCase().includes(q)||e.title.toLowerCase().includes(q);
+      if(filter==="platform") return e.links.some(l=>l.platform.includes(q));
+      return e.name.toLowerCase().includes(q)||e.title.toLowerCase().includes(q)||e.description.toLowerCase().includes(q);
+    });
+    if(results.length===0){bsResults.innerHTML='<p class="bs-hint">نتیجه‌ای یافت نشد.</p>';return;}
+    bsResults.innerHTML=results.slice(0,20).map(e=>`
+      <button class="bs-result-item" data-id="${e.id}">
+        <div class="bs-r-av" style="background:${e.color}">${e.initial}</div>
+        <div class="bs-r-info"><strong>${e.name}</strong>${e.title?"<br><small>"+e.title+"</small>":""}</div>
+        <span class="iconify" data-icon="ph:arrow-left" data-width="14" style="margin-right:auto;color:var(--text-dim)"></span>
+      </button>
+    `).join("");
+    bsResults.querySelectorAll(".bs-result-item").forEach(el=>{
+      el.addEventListener("click",()=>{
+        const id=el.dataset.id;
+        const target=document.querySelector(`[data-id="${id}"]`);
+        if(target){closeBS();target.scrollIntoView({behavior:"smooth",block:"center"});target.querySelector(".entity-row")?.click();}
+      });
+    });
+  });
+
+  // تم
+  const html = document.documentElement;
+  const saved = localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") html.setAttribute("data-theme", saved);
+  function setThemeIcon(m) {
+    const icon = m === "light" ? "ph:moon-bold" : "ph:sun-bold";
+    const el = document.querySelector("#nav-theme .iconify");
+    if (el) el.setAttribute("data-icon", icon);
+  }
+  setThemeIcon(html.getAttribute("data-theme") || "dark");
+  document.getElementById("nav-theme")?.addEventListener("click", () => {
+    const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
+    html.setAttribute("data-theme", next);
+    localStorage.setItem("theme", next);
+    setThemeIcon(next);
+  });
+
+  function buildShareText(entity) {
+    const enc = p => {
+      const labels = { telegram: "تلگرام", instagram: "اینستاگرام", youtube: "یوتیوب",
+        website: "وبسایت", tiktok: "تیک‌تاک", twitter: "توییتر", x: "ایکس",
+        aparat: "آپارات", linkedin: "لینکدین", whatsapp: "واتساپ", facebook: "فیسبوک",
+        spotify: "اسپاتیفای", soundcloud: "ساندکلاد", discord: "دیسکورد", threads: "تردز",
+        email: "ایمیل", blog: "وبلاگ" };
+      return labels[p] || p;
+    };
+    let t = entity.title ? `${entity.name} — ${entity.title}` : entity.name;
+    if (entity.description) t += `\n${entity.description.replace(/<[^>]*>/g,"").trim().slice(0,200)}`;
+    if (entity.links?.length) {
+      t += `\n\n🔗 لینک‌ها:`;
+      entity.links.forEach(l => { t += `\n• ${enc(l.platform)}: ${l.url}`; });
+    }
+    t += `\n\n✦ سقیفه\nدریچه‌ای به منابع تاریخی و پژوهشی\n🌐 saqifah.com`;
+    return t;
+  }
+
+  function showFeedback(e) {
+    const el = document.createElement("div");
+    el.className = "copy-feedback";
+    el.innerText = "متن کپی و آماده ارسال شد";
+    el.style.left = `${e.clientX}px`;
+    el.style.top = `${e.clientY - 40}px`;
+    document.body.appendChild(el);
+    setTimeout(() => { el.classList.add("fade-out"); setTimeout(() => el.remove(), 400); }, 1000);
+  }
+
+  // Share
+  document.querySelectorAll(".share-btn").forEach(btn=>{
+    btn.addEventListener("click",async e=>{
+      const raw=btn.getAttribute("data-entity");
+      if(!raw)return;
+      try{
+        const entity=JSON.parse(raw);
+        const text=buildShareText(entity);
+        if(navigator.share) await navigator.share({title:entity.name,text});
+        else{await navigator.clipboard.writeText(text);showFeedback(e);}
+      }catch{}
+    });
+  });
+
+  // Report
+  document.querySelectorAll(".report-btn").forEach(btn=>{
+    btn.addEventListener("click",async()=>{
+      const name=btn.getAttribute("data-name")??"";
+      const url=location.href;
+      try {
+        await fetch(`${SB_URL}/rest/v1/link_suggestions`, {
+          method:"POST",
+          headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`},
+          body:JSON.stringify({target_name:name,target_url:url,notes:"گزارش خرابی لینک"}),
+        });
+        alert(`گزارش خرابی برای «${name}» ثبت شد.`);
+      } catch { alert("خطا در ثبت گزارش. لطفاً دوباره تلاش کنید."); }
+    });
+  });
+</script>

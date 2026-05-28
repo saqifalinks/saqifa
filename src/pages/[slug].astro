@@ -3,70 +3,115 @@ export const prerender = false;
 
 import Layout from '../layouts/Layout.astro';
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { getCategoryIcon, getPlatformInfo } from "../lib/config";
 
 const { slug } = Astro.params;
+const SB_URL = import.meta.env.SUPABASE_URL;
+const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
 
 type Category = { id: string; name: string; slug: string; icon_name: string; };
 type Link     = { id: string; platform: string; url: string; display_order: number; };
-type Entity   = { id: string; name: string; title: string | null; description: string | null; avatar_url: string | null; is_verified: boolean; links: Link[]; };
+type Entity   = { id: string; name: string; title: string | null; description: string | null; avatar_url: string | null; verification_type: string | null; links: Link[]; };
+type FilterOpt = { id: number; value: string; display_order: number; };
+type CatFilter = { id: number; name: string; slug: string; options: FilterOpt[]; };
 
 let category: Category | null = null;
 let entities: Entity[] = [];
 let allCategories: Category[] = [];
+let filtersList: CatFilter[] = [];
+let activeFilters: Record<string, string> = {};
 let pageError = "";
 
 if (isSupabaseConfigured && supabase) {
-  const [{ data: catData, error: catError }, { data: allCats }] = await Promise.all([
-    supabase.from("categories").select("id,name,slug,icon_name").eq("slug", slug).single(),
-    supabase.from("categories").select("id,name,slug,icon_name").order("display_order", { ascending: true }),
-  ]);
+  try {
+    const [{ data: catData, error: catError }, { data: allCats }] = await Promise.all([
+      supabase.from("categories").select("id,name,slug,icon_name").eq("slug", slug).single(),
+      supabase.from("categories").select("id,name,slug,icon_name").order("display_order", { ascending: true }),
+    ]);
 
-  allCategories = (allCats ?? []) as Category[];
+    allCategories = (allCats ?? []) as Category[];
 
-  if (catError || !catData) {
-    pageError = "دسته‌بندی یافت نشد.";
-  } else {
-    category = catData as Category;
-    const { data: entitiesData, error: entitiesError } = await supabase
-      .from("entities")
-      .select("id,name,title,description,avatar_url,is_verified,links(id,platform,url,display_order)")
-      .eq("category_id", category.id)
-      .order("created_at", { ascending: true });
-
-    if (entitiesError) {
-      pageError = "خطا در دریافت اطلاعات.";
+    if (catError || !catData) {
+      pageError = "دسته‌بندی یافت نشد.";
     } else {
-      entities = (entitiesData ?? []).map((e: any) => ({
-        ...e,
-        links: (e.links ?? []).sort((a: Link, b: Link) => a.display_order - b.display_order),
-      }));
+      category = catData as Category;
+
+      // دریافت فیلترهای فعال این دسته
+      const { data: cfData } = await supabase
+        .from("category_filters")
+        .select("filter_id")
+        .eq("category_id", category.id)
+        .eq("is_active", true);
+
+      if (cfData && cfData.length > 0) {
+        const fIds = cfData.map((r: any) => r.filter_id);
+        const [{ data: fData }, { data: foData }] = await Promise.all([
+          supabase.from("filters").select("id, name, slug").in("id", fIds).order("display_order", { ascending: true }),
+          supabase.from("filter_options").select("id, filter_id, value, display_order").in("filter_id", fIds).order("display_order", { ascending: true }),
+        ]);
+        filtersList = (fData ?? []).map((f: any) => ({
+          id: f.id, name: f.name, slug: f.slug,
+          options: (foData ?? []).filter((o: any) => o.filter_id === f.id).sort((a: FilterOpt, b: FilterOpt) => a.display_order - b.display_order),
+        }));
+      }
+
+      // پارس فیلترهای فعال از URL
+      for (const f of filtersList) {
+        const val = Astro.url.searchParams.get(f.slug);
+        if (val) activeFilters[f.slug] = val;
+      }
+
+      // ساخت کوئری entities با اعمال فیلتر
+      let entityQuery = supabase
+        .from("entities")
+        .select("id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order)")
+        .eq("category_id", category.id);
+
+      // اگر فیلتری انتخاب شده، entityIdها رو محدود کن
+      const filterKeys = Object.keys(activeFilters);
+      if (filterKeys.length > 0) {
+        const matchedFilters = filtersList.filter(f => activeFilters[f.slug]);
+        const allFilteredIds: string[][] = [];
+
+        for (const mf of matchedFilters) {
+          const optId = parseInt(activeFilters[mf.slug]);
+          const { data: evData } = await supabase
+            .from("entity_filter_values")
+            .select("entity_id")
+            .eq("filter_option_id", optId);
+          const ids = (evData ?? []).map((r: any) => r.entity_id);
+          allFilteredIds.push(ids);
+        }
+
+        // اشتراک بین فیلترها (AND)
+        let finalIds: string[] = allFilteredIds[0] ?? [];
+        for (let i = 1; i < allFilteredIds.length; i++) {
+          finalIds = finalIds.filter(id => allFilteredIds[i].includes(id));
+        }
+
+        if (finalIds.length > 0) {
+          entityQuery = entityQuery.in("id", finalIds);
+        } else {
+          entityQuery = entityQuery.in("id", [0]); // هیچ نتیجه‌ای
+        }
+      }
+
+      entityQuery = entityQuery.order("created_at", { ascending: true });
+
+      const { data: entitiesData, error: entitiesError } = await entityQuery;
+
+      if (entitiesError) {
+        pageError = "خطا در دریافت اطلاعات.";
+      } else {
+        entities = (entitiesData ?? []).map((e: any) => ({
+          ...e,
+          links: (e.links ?? []).sort((a: Link, b: Link) => a.display_order - b.display_order),
+        }));
+      }
     }
+  } catch {
+    pageError = "خطا در ارتباط با دیتابیس.";
   }
-}
-
-const platformMap: Record<string, { icon: string; brand: boolean; label: string; color: string }> = {
-  telegram:   { icon: "fa-telegram",      brand: true,  label: "تلگرام",      color: "#29B6F6" },
-  youtube:    { icon: "fa-youtube",        brand: true,  label: "یوتیوب",      color: "#FF0000" },
-  instagram:  { icon: "fa-instagram",      brand: true,  label: "اینستاگرام",  color: "#E1306C" },
-  twitter:    { icon: "fa-twitter",        brand: true,  label: "توییتر",      color: "#1DA1F2" },
-  x:          { icon: "fa-x-twitter",      brand: true,  label: "ایکس",        color: "#222222" },
-  website:    { icon: "fa-globe",          brand: false, label: "وبسایت",      color: "#4CAF50" },
-  site:       { icon: "fa-globe",          brand: false, label: "وبسایت",      color: "#4CAF50" },
-  soundcloud: { icon: "fa-soundcloud",     brand: true,  label: "ساندکلاد",    color: "#FF5500" },
-  spotify:    { icon: "fa-spotify",        brand: true,  label: "اسپاتیفای",   color: "#1DB954" },
-  facebook:   { icon: "fa-facebook",       brand: true,  label: "فیسبوک",      color: "#1877F2" },
-  whatsapp:   { icon: "fa-whatsapp",       brand: true,  label: "واتساپ",      color: "#25D366" },
-  aparat:     { icon: "fa-play-circle",    brand: false, label: "آپارات",      color: "#E7194B" },
-  linkedin:   { icon: "fa-linkedin",       brand: true,  label: "لینکدین",     color: "#0A66C2" },
-  tiktok:     { icon: "fa-tiktok",         brand: true,  label: "تیک‌تاک",     color: "#010101" },
-  pinterest:  { icon: "fa-pinterest",      brand: true,  label: "پینترست",     color: "#E60023" },
-  discord:    { icon: "fa-discord",        brand: true,  label: "دیسکورد",     color: "#5865F2" },
-  twitch:     { icon: "fa-twitch",         brand: true,  label: "توییچ",       color: "#9146FF" },
-  reddit:     { icon: "fa-reddit",         brand: true,  label: "ردیت",        color: "#FF4500" },
-};
-
-function getPlatform(p: string) {
-  return platformMap[p?.toLowerCase()] ?? { icon: "fa-link", brand: false, label: p ?? "لینک", color: "#888888" };
 }
 
 const avatarColors = ["#5C6BC0","#26A69A","#EC407A","#AB47BC","#42A5F5","#FF7043","#66BB6A","#FF8F00"];
@@ -85,12 +130,8 @@ const searchData = entities.map(e => ({
   avatar_url: e.avatar_url,
   color: getAvatarColor(e.name),
   initial: getInitial(e.name),
-  is_verified: e.is_verified,
-  links: e.links.map(l => ({
-    url: l.url,
-    platform: l.platform,
-    ...getPlatform(l.platform),
-  })),
+  verification_type: e.verification_type,
+  links: e.links.map(l => ({ url: l.url, platform: l.platform, ...getPlatformInfo(l.platform) })),
 }));
 ---
 
@@ -102,6 +143,37 @@ const searchData = entities.map(e => ({
       <h1 class="page-title">{category?.name ?? "دسته‌بندی"}</h1>
     </header>
 
+    <!-- فیلترها -->
+    {filtersList.length > 0 && (
+      <div class="filter-bar">
+        {filtersList.map(f => (
+          <div class="filter-group">
+            <span class="filter-label">{f.name}</span>
+            <div class="fscroll-wrap">
+              <div class="filter-options" data-fscroll={f.slug}>
+                <a href={`/${slug}`}
+                  class={`filter-chip${!activeFilters[f.slug] ? " active" : ""}`}>
+                  همه
+                </a>
+                {f.options.map(o => (
+                  <a href={`/${slug}?${f.slug}=${o.id}`}
+                    class={`filter-chip${activeFilters[f.slug] === String(o.id) ? " active" : ""}`}>
+                    {o.value}
+                  </a>
+                ))}
+              </div>
+              <button class="fscroll-arr fscroll-arr--r" data-fdir="right" data-fscroll={f.slug} type="button" aria-label="بعدی">
+                <span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span>
+              </button>
+              <button class="fscroll-arr fscroll-arr--l" data-fdir="left" data-fscroll={f.slug} type="button" aria-label="قبلی">
+                <span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
     <!-- لیست -->
     <main class="entity-list">
       {pageError && <p class="empty-state">{pageError}</p>}
@@ -111,67 +183,55 @@ const searchData = entities.map(e => ({
         const color = getAvatarColor(entity.name);
         const initial = getInitial(entity.name);
         return (
-          <div class="entity-item" data-id={entity.id} data-search={entity.name.toLowerCase()}>
+          <div class="entity-item glass-card" data-id={entity.id} data-search={entity.name.toLowerCase()}>
 
             <button class="entity-row" type="button" aria-expanded="false">
-              <!-- آواتار -->
               <div class="avatar" style={`--av:${color}`}>
                 {entity.avatar_url
                   ? <img src={entity.avatar_url} alt={entity.name} loading="lazy" />
                   : <span>{initial}</span>}
               </div>
 
-              <!-- متا -->
               <div class="entity-meta">
                 <span class="entity-name">
                   {entity.name}
-                  {entity.is_verified && <i class="fa-solid fa-circle-check verified-badge"></i>}
+                  {entity.verification_type === 'blue' && (
+                    <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#3b9eff"></span>
+                  )}
+                  {entity.verification_type === 'gold' && (
+                    <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#d4af37"></span>
+                  )}
                 </span>
-                {entity.title && (
-                  <span class="entity-title">{entity.title}</span>
-                )}
-                {entity.description && (
-                  <span class="entity-preview">{entity.description}</span>
-                )}
+                {entity.title && <span class="entity-title">{entity.title}</span>}
               </div>
 
-              <i class="fa-solid fa-chevron-down chevron"></i>
+              <span class="iconify chevron" data-icon="ph:caret-down" data-width="14" data-height="14"></span>
             </button>
 
             <!-- آکاردئون -->
             <div class="acc-body">
               <div class="acc-inner">
-                {entity.description && (
-                  <p class="acc-bio">{entity.description}</p>
-                )}
+                {entity.description && <p class="acc-bio">{entity.description}</p>}
 
-                <!-- آیکون‌های شبکه اجتماعی — اسکرول افقی -->
                 {entity.links.length > 0 && (
                   <div class="social-scroll-wrap">
                     <div class="social-scroll" data-scroll-id={entity.id}>
                       {entity.links.map((link) => {
-                        const p = getPlatform(link.platform);
+                        const p = getPlatformInfo(link.platform);
                         return (
-                          <a
-                            href={link.url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            class="social-icon-btn"
-                            style={`--pc:${p.color}`}
-                            title={p.label}
-                            aria-label={p.label}
-                          >
-                            <i class={`${p.brand ? 'fa-brands' : 'fa-solid'} ${p.icon}`}></i>
+                          <a href={link.url} target="_blank" rel="noreferrer noopener"
+                            class="social-icon-btn" style={`--pc:${p.color}`}
+                            title={p.label} aria-label={p.label}>
+                            <span class="iconify" data-icon={p.icon} data-width="22" data-height="22"></span>
                           </a>
                         );
                       })}
                     </div>
-                    <!-- فلش‌های اسکرول -->
-                    <button class="scroll-arrow scroll-arrow--right" type="button" data-dir="right" data-target={entity.id} aria-label="بیشتر">
-                      <i class="fa-solid fa-chevron-left"></i>
+                    <button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target={entity.id}>
+                      <span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span>
                     </button>
-                    <button class="scroll-arrow scroll-arrow--left" type="button" data-dir="left" data-target={entity.id} aria-label="قبلی">
-                      <i class="fa-solid fa-chevron-right"></i>
+                    <button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target={entity.id}>
+                      <span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span>
                     </button>
                   </div>
                 )}
@@ -180,17 +240,17 @@ const searchData = entities.map(e => ({
 
                 <div class="acc-actions">
                   <button class="action-btn report-btn" type="button" data-name={entity.name}>
-                    <i class="fa-solid fa-triangle-exclamation"></i> گزارش خرابی
+                    <span class="iconify" data-icon="ph:warning" data-width="14" data-height="14"></span>
+                    گزارش خرابی
                   </button>
                   <button class="action-btn share-btn" type="button"
-                    data-name={entity.name} data-url={Astro.url.href}>
-                    <i class="fa-solid fa-share-nodes"></i> اشتراک‌گذاری
+                    data-entity={JSON.stringify({name:entity.name,title:entity.title,description:entity.description,links:entity.links.map(l=>({platform:l.platform,url:l.url}))})}>
+                    <span class="iconify" data-icon="ph:share-network" data-width="14" data-height="14"></span>
+                    اشتراک‌گذاری
                   </button>
                 </div>
               </div>
             </div>
-
-            <div class="divider"></div>
           </div>
         );
       })}
@@ -199,15 +259,15 @@ const searchData = entities.map(e => ({
     <!-- منوی پایین -->
     <nav class="bottom-nav">
       <a href="/" class="nav-item">
-        <i class="fa-solid fa-house"></i>
+        <span class="iconify" data-icon="ph:house" data-width="22" data-height="22"></span>
         <span>خانه</span>
       </a>
       <button class="nav-item" id="nav-search" type="button">
-        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="iconify" data-icon="ph:magnifying-glass" data-width="22" data-height="22"></span>
         <span>جستجو</span>
       </button>
       <button class="nav-item" id="nav-theme" type="button">
-        <i class="fa-solid fa-circle-half-stroke"></i>
+        <span class="iconify" data-icon="ph:sun-bold" data-width="22" data-height="22"></span>
         <span>تم</span>
       </button>
     </nav>
@@ -215,44 +275,37 @@ const searchData = entities.map(e => ({
     <!-- Edge Menu -->
     <div class="edge-backdrop" id="edge-backdrop"></div>
     <div class="edge-panel" id="edge-panel">
-      <!-- تب بیرون‌زده -->
-      <div class="edge-tab" id="edge-tab" aria-label="دسته‌بندی‌ها">
-        <i class="fa-solid fa-table-cells-large"></i>
+      <div class="edge-tab" id="edge-tab">
+        <span class="iconify" data-icon="ph:squares-four" data-width="14" data-height="14"></span>
       </div>
-      <!-- لیست دسته‌ها -->
       <div class="edge-cats" id="edge-cats">
-        <button class="edge-arrow edge-arrow--up" id="edge-up" type="button">
-          <i class="fa-solid fa-chevron-up"></i>
+        <button class="edge-arrow" id="edge-up" type="button">
+          <span class="iconify" data-icon="ph:caret-up" data-width="12" data-height="12"></span>
         </button>
-        <div class="edge-cats-scroll" id="edge-scroll">
+        <div class="edge-scroll" id="edge-scroll">
           {allCategories.map((cat) => (
-            <a
-              href={`/${cat.slug}`}
-              class={`edge-cat-item${cat.slug === slug ? " edge-cat--active" : ""}`}
-              data-name={cat.name}
-              data-slug={cat.slug}
-            >
-              <i class={`fa-solid ${cat.icon_name || "fa-folder"}`}></i>
-              <!-- حباب اسم -->
-              <span class="edge-tooltip">{cat.name}</span>
+            <a href={`/${cat.slug}`}
+              class={`edge-cat${cat.slug === slug ? " edge-cat--active" : ""}`}
+              data-slug={cat.slug} data-name={cat.name}>
+              <span class="edge-label">{cat.name}</span>
             </a>
           ))}
         </div>
-        <button class="edge-arrow edge-arrow--down" id="edge-down" type="button">
-          <i class="fa-solid fa-chevron-down"></i>
+        <button class="edge-arrow" id="edge-down" type="button">
+          <span class="iconify" data-icon="ph:caret-down" data-width="12" data-height="12"></span>
         </button>
       </div>
     </div>
 
     <!-- Bottom Sheet جستجو -->
     <div class="bs-backdrop" id="bs-backdrop"></div>
-    <div class="bottom-sheet" id="bottom-sheet" role="dialog" aria-modal="true">
+    <div class="bottom-sheet" id="bottom-sheet">
       <div class="bs-handle"></div>
       <div class="bs-search-row">
-        <i class="fa-solid fa-magnifying-glass bs-search-icon"></i>
+        <span class="iconify" data-icon="ph:magnifying-glass" data-width="16" data-height="16" style="color:var(--text-dim)"></span>
         <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" />
         <button id="bs-clear" class="bs-clear-btn" type="button" style="display:none">
-          <i class="fa-solid fa-xmark"></i>
+          <span class="iconify" data-icon="ph:x" data-width="14" data-height="14"></span>
         </button>
       </div>
       <div class="bs-filters">
@@ -274,19 +327,21 @@ const searchData = entities.map(e => ({
   .page-shell {
     max-width: 680px;
     margin: 0 auto;
-    min-height: 100vh;
     padding-bottom: 72px;
-    position: relative;
   }
 
   /* ——— هدر ——— */
   .page-header {
     padding: 28px 20px 18px;
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+    backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
   }
   .page-title {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 900;
     color: var(--text-main);
     margin: 0;
@@ -294,8 +349,24 @@ const searchData = entities.map(e => ({
     text-align: center;
   }
 
+  /* ——— glass card ——— */
+  .glass-card {
+    background: color-mix(in srgb, var(--surface) 75%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
   /* ——— لیست ——— */
-  .entity-list { padding: 0; }
+  .entity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 14px 0;
+  }
+
   .entity-item { position: relative; }
 
   .entity-row {
@@ -303,7 +374,7 @@ const searchData = entities.map(e => ({
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 12px 16px;
+    padding: 12px 14px;
     background: none;
     border: none;
     cursor: pointer;
@@ -325,6 +396,7 @@ const searchData = entities.map(e => ({
     font-weight: 900;
     color: #fff;
     overflow: hidden;
+    border: 2px solid color-mix(in srgb, var(--av) 40%, transparent);
   }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -343,83 +415,65 @@ const searchData = entities.map(e => ({
     color: var(--text-main);
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
   }
-  .verified-badge { color: #3b9eff; font-size: 12px; }
 
-  .entity-preview {
-    font-size: 12px;
-    color: var(--text-dim);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  .verified-badge { color: #3b9eff; }
 
   .entity-title {
     font-size: 11px;
-    color: var(--primary);
     font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--primary);
   }
 
   .chevron {
-    font-size: 11px;
     color: var(--text-dim);
     flex-shrink: 0;
-    transition: transform 0.25s ease;
+    transition: transform 0.25s;
   }
   .entity-item.open .chevron { transform: rotate(180deg); }
-
-  .divider { height: 1px; background: var(--border); margin: 0 16px; opacity: 0.4; }
 
   /* ——— آکاردئون ——— */
   .acc-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.28s ease; }
   .entity-item.open .acc-body { grid-template-rows: 1fr; }
-  .acc-inner { overflow: hidden; padding: 0 16px; }
-  .entity-item.open .acc-inner { padding: 6px 16px 14px; }
+  .acc-inner { overflow: hidden; padding: 0 14px; }
+  .entity-item.open .acc-inner { padding: 0 14px 14px; }
 
   .acc-bio {
     font-size: 13px;
     color: var(--text-dim);
     line-height: 1.7;
-    margin: 0 0 14px;
-    padding-bottom: 12px;
+    margin: 0 0 12px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--border);
   }
 
-  /* ——— آیکون‌های شبکه اجتماعی ——— */
-  .social-scroll-wrap {
-    position: relative;
-    margin-bottom: 14px;
-  }
+  /* آیکون‌های شبکه اجتماعی */
+  .social-scroll-wrap { position: relative; margin-bottom: 12px; }
 
   .social-scroll {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     overflow-x: auto;
     scroll-behavior: smooth;
     padding: 4px 2px 8px;
     scrollbar-width: none;
-    -ms-overflow-style: none;
   }
   .social-scroll::-webkit-scrollbar { display: none; }
 
   .social-icon-btn {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
     color: var(--text-dim);
     background: color-mix(in srgb, var(--text-dim) 8%, transparent);
     border: 1px solid var(--border);
     text-decoration: none;
     flex-shrink: 0;
-    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    transition: color 0.2s, background 0.2s, border-color 0.2s, transform 0.15s;
   }
   .social-icon-btn:hover {
     color: var(--pc);
@@ -428,18 +482,16 @@ const searchData = entities.map(e => ({
     transform: translateY(-2px);
   }
 
-  /* فلش‌های اسکرول */
-  .scroll-arrow {
+  .scroll-arr {
     position: absolute;
     top: 50%;
-    transform: translateY(-60%);
-    width: 28px;
-    height: 28px;
+    transform: translateY(-65%);
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     background: var(--surface);
     border: 1px solid var(--border);
     color: var(--text-dim);
-    font-size: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -450,9 +502,9 @@ const searchData = entities.map(e => ({
     box-shadow: 0 2px 8px color-mix(in srgb,#000 12%,transparent);
     z-index: 2;
   }
-  .scroll-arrow.visible { opacity: 1; pointer-events: auto; }
-  .scroll-arrow--right { right: 0; }
-  .scroll-arrow--left  { left: 0; }
+  .scroll-arr.visible { opacity: 1; pointer-events: auto; }
+  .scroll-arr--r { right: -24px; }
+  .scroll-arr--l { left: -24px; }
 
   .no-links { font-size: 12px; color: var(--text-dim); margin: 0 0 12px; }
 
@@ -462,6 +514,7 @@ const searchData = entities.map(e => ({
     border-top: 1px solid var(--border);
     padding-top: 10px;
   }
+
   .action-btn {
     flex: 1;
     display: flex;
@@ -484,6 +537,80 @@ const searchData = entities.map(e => ({
 
   .empty-state { text-align: center; color: var(--text-dim); font-size: 13px; padding: 48px 16px; }
 
+  /* ——— فیلترها ——— */
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px 10px;
+  }
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    width: 100%;
+  }
+  .filter-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-dim);
+  }
+  .fscroll-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    width: 100%;
+  }
+  .filter-options {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    flex-wrap: nowrap;
+    padding: 2px 0;
+    min-width: 0;
+    flex: 1;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .filter-options::-webkit-scrollbar { display: none; }
+  .fscroll-arr {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 2; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .fscroll-arr.visible { opacity: 1; pointer-events: auto; }
+  .fscroll-arr:hover { color: var(--primary); border-color: var(--primary); }
+  .fscroll-arr--r { right: -12px; }
+  .fscroll-arr--l { left: -12px; }
+  .filter-chip {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--text-dim);
+    background: color-mix(in srgb, var(--text-dim) 8%, transparent);
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .filter-chip:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  .filter-chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+
   /* ——— منوی پایین ——— */
   .bottom-nav {
     position: fixed;
@@ -498,14 +625,15 @@ const searchData = entities.map(e => ({
     z-index: 40;
     padding-bottom: env(safe-area-inset-bottom);
   }
+
   .nav-item {
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 10px 0;
+    gap: 3px;
+    padding: 9px 0;
     color: var(--text-dim);
     text-decoration: none;
     font-size: 10px;
@@ -516,7 +644,6 @@ const searchData = entities.map(e => ({
     font-family: inherit;
     transition: color 0.15s;
   }
-  .nav-item i { font-size: 19px; }
   .nav-item:hover { color: var(--primary); }
 
   /* ——— Edge Menu ——— */
@@ -525,11 +652,10 @@ const searchData = entities.map(e => ({
     inset: 0;
     background: rgba(0,0,0,0.3);
     backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
     z-index: 50;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.25s;
   }
   .edge-backdrop.open { opacity: 1; pointer-events: auto; }
 
@@ -541,29 +667,27 @@ const searchData = entities.map(e => ({
     z-index: 51;
     display: flex;
     align-items: center;
-    transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+    transition: transform 0.3s cubic-bezier(0.34,1.4,0.64,1);
   }
   .edge-panel.open { transform: translateY(-50%) translateX(0); }
 
   .edge-tab {
     width: 28px;
-    height: 64px;
+    height: 60px;
     background: var(--primary);
     border-radius: 0 14px 14px 0;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 13px;
     cursor: pointer;
     flex-shrink: 0;
-    box-shadow: 3px 0 14px color-mix(in srgb, var(--primary) 45%, transparent);
-    position: relative;
-    z-index: 1;
+    box-shadow: 3px 0 14px color-mix(in srgb,var(--primary) 45%,transparent);
   }
 
   .edge-cats {
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
     border-left: none;
     border-radius: 0 16px 16px 0;
@@ -573,11 +697,11 @@ const searchData = entities.map(e => ({
     align-items: center;
     gap: 2px;
     max-height: 65vh;
-    box-shadow: 4px 0 20px color-mix(in srgb, #000 15%, transparent);
-    min-width: 60px;
+    min-width: 64px;
+    box-shadow: 4px 0 20px color-mix(in srgb,#000 15%,transparent);
   }
 
-  .edge-cats-scroll {
+  .edge-scroll {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -585,21 +709,18 @@ const searchData = entities.map(e => ({
     scroll-behavior: smooth;
     scrollbar-width: none;
     flex: 1;
-    padding: 2px 0;
   }
-  .edge-cats-scroll::-webkit-scrollbar { display: none; }
+  .edge-scroll::-webkit-scrollbar { display: none; }
 
-  /* فلش بالا/پایین */
   .edge-arrow {
     width: 32px;
-    height: 22px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: none;
     border: none;
     color: var(--text-dim);
-    font-size: 11px;
     cursor: pointer;
     border-radius: 6px;
     flex-shrink: 0;
@@ -608,45 +729,21 @@ const searchData = entities.map(e => ({
   .edge-arrow:hover { color: var(--primary); }
   .edge-arrow.hidden { opacity: 0; pointer-events: none; }
 
-  /* آیتم دسته */
-  .edge-cat-item {
-    position: relative;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+  .edge-cat {
     display: flex;
     align-items: center;
-    justify-content: center;
+    padding: 6px 12px;
+    border-radius: 10px;
     text-decoration: none;
     color: var(--text-dim);
-    font-size: 20px;
     transition: background 0.15s, color 0.15s;
     flex-shrink: 0;
-  }
-  .edge-cat-item:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); }
-  .edge-cat--active { color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, transparent); }
-
-  /* حباب اسم — سمت راست آیکون */
-  .edge-tooltip {
-    position: absolute;
-    right: calc(100% + 10px);
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text-main);
-    font-size: 11px;
-    font-weight: 700;
-    padding: 4px 10px;
-    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
     white-space: nowrap;
-    box-shadow: 0 2px 10px color-mix(in srgb,#000 15%,transparent);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-    z-index: 10;
   }
-  .edge-cat-item.show-tip .edge-tooltip { opacity: 1; }
+  .edge-cat:hover { background: color-mix(in srgb,var(--primary) 10%,transparent); color: var(--primary); }
+  .edge-cat--active { color: var(--primary); background: color-mix(in srgb,var(--primary) 14%,transparent); }
 
   /* ——— Bottom Sheet ——— */
   .bs-backdrop {
@@ -654,11 +751,10 @@ const searchData = entities.map(e => ({
     inset: 0;
     background: rgba(0,0,0,0.4);
     backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
     z-index: 60;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.25s;
   }
   .bs-backdrop.open { opacity: 1; pointer-events: auto; }
 
@@ -677,19 +773,12 @@ const searchData = entities.map(e => ({
     z-index: 61;
     display: flex;
     flex-direction: column;
-    transition: transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+    transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
     padding-bottom: env(safe-area-inset-bottom);
   }
   .bottom-sheet.open { transform: translateX(-50%) translateY(0); }
 
-  .bs-handle {
-    width: 40px;
-    height: 4px;
-    background: var(--border);
-    border-radius: 4px;
-    margin: 12px auto 10px;
-    flex-shrink: 0;
-  }
+  .bs-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 12px auto 10px; flex-shrink: 0; }
 
   .bs-search-row {
     display: flex;
@@ -697,12 +786,12 @@ const searchData = entities.map(e => ({
     gap: 10px;
     margin: 0 16px 12px;
     padding: 10px 14px;
-    background: color-mix(in srgb, var(--text-dim) 8%, transparent);
+    background: color-mix(in srgb,var(--text-dim) 8%,transparent);
     border-radius: 14px;
     border: 1px solid var(--border);
     flex-shrink: 0;
   }
-  .bs-search-icon { color: var(--text-dim); font-size: 14px; }
+
   .bs-search-row input {
     flex: 1;
     background: none;
@@ -713,14 +802,11 @@ const searchData = entities.map(e => ({
     font-family: inherit;
     direction: rtl;
   }
-  .bs-clear-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; padding: 2px; }
 
-  .bs-filters {
-    display: flex;
-    gap: 8px;
-    padding: 0 16px 12px;
-    flex-shrink: 0;
-  }
+  .bs-clear-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 2px; }
+
+  .bs-filters { display: flex; gap: 8px; padding: 0 16px 12px; flex-shrink: 0; }
+
   .bs-filter {
     padding: 6px 18px;
     border-radius: 20px;
@@ -735,42 +821,19 @@ const searchData = entities.map(e => ({
   }
   .bs-filter.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
-  .bs-results { flex: 1; overflow-y: auto; padding-bottom: 16px; }
+  :global(.bs-results) { flex: 1; overflow-y: auto; padding-bottom: 16px; }
+  :global(.bs-hint, .bs-no-result) { text-align: center; color: var(--text-dim); font-size: 13px; padding: 32px 16px; margin: 0; }
+  :global(.bs-section-title) { font-size: 11px; font-weight: 800; color: var(--text-dim); padding: 10px 16px 4px; margin: 0; }
+  :global(.bs-divider) { height: 1px; background: var(--border); margin: 0 16px; opacity: 0.4; }
 
-  .bs-hint { text-align: center; color: var(--text-dim); font-size: 13px; padding: 32px 16px; margin: 0; }
-  .bs-no-result { text-align: center; color: var(--text-dim); font-size: 13px; padding: 32px 16px; margin: 0; }
-  .bs-section-title { font-size: 11px; font-weight: 800; color: var(--text-dim); padding: 10px 16px 4px; letter-spacing: 0.05em; margin: 0; }
-  .bs-divider { height: 1px; background: var(--border); margin: 0 16px; opacity: 0.4; }
-
-  .bs-entity-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    cursor: pointer;
-    transition: background 0.12s;
+  :global(.bs-entity-card) {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-height: 44px;
+    cursor: pointer; transition: background 0.12s; border-radius: 12px; width: 100%;
   }
-  .bs-entity-card:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+  :global(.bs-entity-card:hover) { background: color-mix(in srgb,var(--primary) 5%,transparent); }
+  :global(.bs-entity-name) { font-size: 13px; font-weight: 800; }
 
-  .bs-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 17px;
-    font-weight: 900;
-    color: #fff;
-    overflow: hidden;
-  }
-  .bs-avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-  .bs-entity-name { font-size: 13px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 4px; }
-  .bs-entity-sub  { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-
-  .bs-link-card {
+  :global(.bs-link-card) {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -778,9 +841,9 @@ const searchData = entities.map(e => ({
     text-decoration: none;
     transition: background 0.12s;
   }
-  .bs-link-card:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+  :global(.bs-link-card:hover) { background: color-mix(in srgb,var(--primary) 5%,transparent); }
 
-  .bs-link-icon {
+  :global(.bs-link-icon) {
     width: 40px;
     height: 40px;
     border-radius: 12px;
@@ -790,139 +853,149 @@ const searchData = entities.map(e => ({
     font-size: 18px;
     flex-shrink: 0;
   }
-  .bs-link-platform { font-size: 11px; color: var(--text-dim); }
-  .bs-link-name { font-size: 13px; font-weight: 800; color: var(--text-main); }
+
+  :global(.bs-link-platform) { font-size: 11px; color: var(--text-dim); }
+  :global(.bs-link-name) { font-size: 13px; font-weight: 800; color: var(--text-main); }
+
+  .copy-feedback {
+    position: fixed; z-index: 9999; background: var(--primary); color: #fff;
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; pointer-events: none;
+    transition: opacity 0.4s; white-space: nowrap;
+  }
+  .copy-feedback.fade-out { opacity: 0; }
 </style>
 
-<script is:inline define:vars={{ searchData, currentSlug: slug }}>
-  // ——— تم ———
+<script is:inline define:vars={{ searchData, currentSlug: slug, SB_URL, SB_KEY }}>
+  // تم
   const html = document.documentElement;
   const saved = localStorage.getItem("theme");
   if (saved === "light" || saved === "dark") html.setAttribute("data-theme", saved);
+  function setThemeIcon(m) {
+    const icon = m === "light" ? "ph:moon-bold" : "ph:sun-bold";
+    const el = document.querySelector("#nav-theme .iconify");
+    if (el) el.setAttribute("data-icon", icon);
+  }
+  setThemeIcon(html.getAttribute("data-theme") || "dark");
   document.getElementById("nav-theme")?.addEventListener("click", () => {
     const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
     html.setAttribute("data-theme", next);
     localStorage.setItem("theme", next);
+    setThemeIcon(next);
   });
 
-  // ——— آکاردئون ———
+  // آکاردئون
   document.querySelectorAll(".entity-item").forEach((item) => {
     item.querySelector(".entity-row")?.addEventListener("click", () => {
       const isOpen = item.classList.contains("open");
-      document.querySelectorAll(".entity-item").forEach((i) => {
+      document.querySelectorAll(".entity-item").forEach(i => {
         i.classList.remove("open");
         i.querySelector(".entity-row")?.setAttribute("aria-expanded", "false");
       });
       if (!isOpen) {
-        item.classList.add("open");
-        item.querySelector(".entity-row")?.setAttribute("aria-expanded", "true");
-        // آپدیت فلش‌های اسکرول
-        const id = item.getAttribute("data-id");
-        setTimeout(() => updateScrollArrows(id), 300);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            item.classList.add("open");
+            item.querySelector(".entity-row")?.setAttribute("aria-expanded", "true");
+            setTimeout(() => updateScrollArrows(item.getAttribute("data-id")), 300);
+          });
+        });
       }
     });
   });
 
-  // ——— اسکرول افقی آیکون‌ها ———
-  function updateScrollArrows(entityId) {
-    const scroll = document.querySelector(`.social-scroll[data-scroll-id="${entityId}"]`);
-    if (!scroll) return;
-    const arrowR = document.querySelector(`.scroll-arrow--right[data-target="${entityId}"]`);
-    const arrowL = document.querySelector(`.scroll-arrow--left[data-target="${entityId}"]`);
-    if (arrowR) arrowR.classList.toggle("visible", scroll.scrollLeft < scroll.scrollWidth - scroll.clientWidth - 4);
-    if (arrowL) arrowL.classList.toggle("visible", scroll.scrollLeft > 4);
+  // اسکرول افقی
+  function updateScrollArrows(id) {
+    const s = document.querySelector(`.social-scroll[data-scroll-id="${id}"]`);
+    if (!s) return;
+    const hasOverflow = s.scrollWidth > s.clientWidth + 2;
+    document.querySelector(`.scroll-arr--r[data-target="${id}"]`)?.classList.toggle("visible", hasOverflow);
+    document.querySelector(`.scroll-arr--l[data-target="${id}"]`)?.classList.toggle("visible", hasOverflow);
   }
 
-  document.querySelectorAll(".social-scroll").forEach((scroll) => {
-    const id = scroll.getAttribute("data-scroll-id");
-    scroll.addEventListener("scroll", () => updateScrollArrows(id));
+  document.querySelectorAll(".social-scroll").forEach(s => {
+    s.addEventListener("scroll", () => updateScrollArrows(s.getAttribute("data-scroll-id")));
   });
 
-  document.querySelectorAll(".scroll-arrow").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+  document.querySelectorAll(".scroll-arr").forEach(btn => {
+    btn.addEventListener("click", e => {
       e.stopPropagation();
-      const id  = btn.getAttribute("data-target");
+      const id = btn.getAttribute("data-target");
       const dir = btn.getAttribute("data-dir");
-      const scroll = document.querySelector(`.social-scroll[data-scroll-id="${id}"]`);
-      if (scroll) scroll.scrollBy({ left: dir === "right" ? 120 : -120, behavior: "smooth" });
+      const s = document.querySelector(`.social-scroll[data-scroll-id="${id}"]`);
+      if (s) s.scrollBy({ left: dir === "right" ? 120 : -120, behavior: "smooth" });
     });
   });
 
-  // ——— Edge Menu ———
-  const edgePanel    = document.getElementById("edge-panel");
+  // اسکرول فیلتر
+  function updateFScroll(fslug) {
+    const s = document.querySelector(`.filter-options[data-fscroll="${fslug}"]`);
+    if (!s) return;
+    const hasOverflow = s.scrollWidth > s.clientWidth + 2;
+    document.querySelector(`.fscroll-arr--r[data-fscroll="${fslug}"]`)?.classList.toggle("visible", hasOverflow);
+    document.querySelector(`.fscroll-arr--l[data-fscroll="${fslug}"]`)?.classList.toggle("visible", hasOverflow);
+  }
+  document.querySelectorAll(".filter-options").forEach(s => {
+    const fslug = s.getAttribute("data-fscroll");
+    s.addEventListener("scroll", () => updateFScroll(fslug));
+    updateFScroll(fslug);
+  });
+  document.querySelectorAll(".fscroll-arr").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const fslug = btn.getAttribute("data-fscroll");
+      const dir = btn.getAttribute("data-fdir");
+      const s = document.querySelector(`.filter-options[data-fscroll="${fslug}"]`);
+      if (s) s.scrollBy({ left: dir === "right" ? 120 : -120, behavior: "smooth" });
+    });
+  });
+
+  // اسکرول به چیپ فعال
+  const activeChip = document.querySelector(".filter-chip.active");
+  if (activeChip) {
+    setTimeout(() => activeChip.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }), 150);
+  }
+
+  // Edge Menu
+  const edgePanel = document.getElementById("edge-panel");
   const edgeBackdrop = document.getElementById("edge-backdrop");
-  const edgeTab      = document.getElementById("edge-tab");
-  const edgeScroll   = document.getElementById("edge-scroll");
-  const edgeUp       = document.getElementById("edge-up");
-  const edgeDown     = document.getElementById("edge-down");
+  const edgeScroll = document.getElementById("edge-scroll");
+  const edgeUp = document.getElementById("edge-up");
+  const edgeDown = document.getElementById("edge-down");
 
   function openEdge()  { edgePanel?.classList.add("open"); edgeBackdrop?.classList.add("open"); updateEdgeArrows(); }
   function closeEdge() { edgePanel?.classList.remove("open"); edgeBackdrop?.classList.remove("open"); }
 
-  edgeTab?.addEventListener("click", () => edgePanel?.classList.contains("open") ? closeEdge() : openEdge());
+  document.getElementById("edge-tab")?.addEventListener("click", () =>
+    edgePanel?.classList.contains("open") ? closeEdge() : openEdge()
+  );
   edgeBackdrop?.addEventListener("click", closeEdge);
 
   function updateEdgeArrows() {
-    if (!edgeScroll || !edgeUp || !edgeDown) return;
-    edgeUp.classList.toggle("hidden",   edgeScroll.scrollTop <= 4);
-    edgeDown.classList.toggle("hidden", edgeScroll.scrollTop >= edgeScroll.scrollHeight - edgeScroll.clientHeight - 4);
+    if (!edgeScroll) return;
+    edgeUp?.classList.toggle("hidden", edgeScroll.scrollTop <= 4);
+    edgeDown?.classList.toggle("hidden", edgeScroll.scrollTop >= edgeScroll.scrollHeight - edgeScroll.clientHeight - 4);
   }
-
   edgeScroll?.addEventListener("scroll", updateEdgeArrows);
-  edgeUp?.addEventListener("click",   () => { edgeScroll?.scrollBy({ top: -120, behavior: "smooth" }); });
-  edgeDown?.addEventListener("click", () => { edgeScroll?.scrollBy({ top:  120, behavior: "smooth" }); });
+  edgeUp?.addEventListener("click",   () => edgeScroll?.scrollBy({ top: -120, behavior: "smooth" }));
+  edgeDown?.addEventListener("click", () => edgeScroll?.scrollBy({ top:  120, behavior: "smooth" }));
 
-  // حباب اسم + کلیک
-  document.querySelectorAll(".edge-cat-item").forEach((item) => {
-    let tipTimer = null;
-
-    function showTip() {
-      item.classList.add("show-tip");
-      clearTimeout(tipTimer);
-      tipTimer = setTimeout(() => item.classList.remove("show-tip"), 3000);
-    }
-
-    // hover دسکتاپ
-    item.addEventListener("mouseenter", showTip);
-    item.addEventListener("mouseleave", () => {
-      clearTimeout(tipTimer);
-      tipTimer = setTimeout(() => item.classList.remove("show-tip"), 500);
-    });
-
-    item.addEventListener("click", (e) => {
+  // حباب اسم
+  document.querySelectorAll(".edge-cat").forEach(item => {
+    item.addEventListener("click", e => {
       const href = item.getAttribute("href");
       const isCurrent = item.getAttribute("data-slug") === currentSlug;
-
-      if (isCurrent) {
-        e.preventDefault();
-        showTip();
-        // اسکرول به مرکز
-        item.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
-      }
-
-      // اول حباب نشون بده، بعد برو
-      e.preventDefault();
-      showTip();
-      item.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => { window.location.href = href; }, 350);
+      if (isCurrent) { e.preventDefault(); item.scrollIntoView({ behavior: "smooth", block: "center" }); }
     });
   });
 
-  // ——— Bottom Sheet جستجو ———
+  // Bottom Sheet
   const bsBackdrop  = document.getElementById("bs-backdrop");
   const bottomSheet = document.getElementById("bottom-sheet");
   const bsInput     = document.getElementById("bs-input");
   const bsResults   = document.getElementById("bs-results");
   const bsClear     = document.getElementById("bs-clear");
+  let activeFilter  = "all";
 
-  let activeFilter = "all";
-
-  function openBS() {
-    bottomSheet?.classList.add("open");
-    bsBackdrop?.classList.add("open");
-    setTimeout(() => bsInput?.focus(), 300);
-  }
+  function openBS()  { bottomSheet?.classList.add("open"); bsBackdrop?.classList.add("open"); setTimeout(() => bsInput?.focus(), 300); }
   function closeBS() {
     bottomSheet?.classList.remove("open");
     bsBackdrop?.classList.remove("open");
@@ -934,7 +1007,7 @@ const searchData = entities.map(e => ({
   document.getElementById("nav-search")?.addEventListener("click", openBS);
   bsBackdrop?.addEventListener("click", closeBS);
 
-  document.querySelectorAll(".bs-filter").forEach((btn) => {
+  document.querySelectorAll(".bs-filter").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".bs-filter").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
@@ -943,7 +1016,7 @@ const searchData = entities.map(e => ({
     });
   });
 
-  bsInput?.addEventListener("input", (e) => {
+  bsInput?.addEventListener("input", e => {
     const val = e.target.value;
     if (bsClear) bsClear.style.display = val ? "block" : "none";
     renderResults(val);
@@ -967,6 +1040,7 @@ const searchData = entities.map(e => ({
     if (activeFilter === "all" || activeFilter === "entity") {
       entityResults = searchData.filter(e =>
         e.name.toLowerCase().includes(q) ||
+        (e.title && e.title.toLowerCase().includes(q)) ||
         (e.description && e.description.toLowerCase().includes(q))
       );
     }
@@ -991,19 +1065,9 @@ const searchData = entities.map(e => ({
     if (entityResults.length) {
       if (activeFilter === "all") out += `<p class="bs-section-title">اشخاص و موسسات</p>`;
       entityResults.forEach(e => {
-        const av = e.avatar_url
-          ? `<img src="${e.avatar_url}" alt="${e.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-          : e.initial;
         out += `
           <div class="bs-entity-card" onclick="scrollToEntity('${e.id}')">
-            <div class="bs-avatar" style="background:${e.color}">${av}</div>
-            <div>
-              <div class="bs-entity-name">
-                ${e.name}
-                ${e.is_verified ? '<i class="fa-solid fa-circle-check" style="color:#3b9eff;font-size:11px"></i>' : ''}
-              </div>
-              ${e.description ? `<div class="bs-entity-sub">${e.description}</div>` : ''}
-            </div>
+            <span class="bs-entity-name" style="color:var(--primary)">${e.name}</span>
           </div>
           <div class="bs-divider"></div>`;
       });
@@ -1015,7 +1079,7 @@ const searchData = entities.map(e => ({
         out += `
           <a href="${l.url}" target="_blank" rel="noreferrer noopener" class="bs-link-card">
             <div class="bs-link-icon" style="background:color-mix(in srgb,${l.color} 14%,transparent);color:${l.color}">
-              <i class="${l.brand ? 'fa-brands' : 'fa-solid'} ${l.icon}"></i>
+              <span class="iconify" data-icon="${l.icon}" data-width="20" data-height="20"></span>
             </div>
             <div>
               <div class="bs-link-platform">${l.label}</div>
@@ -1038,23 +1102,72 @@ const searchData = entities.map(e => ({
       if (!target.classList.contains("open")) {
         target.classList.add("open");
         target.querySelector(".entity-row")?.setAttribute("aria-expanded", "true");
-        const entityId = target.getAttribute("data-id");
-        setTimeout(() => updateScrollArrows(entityId), 300);
+        setTimeout(() => updateScrollArrows(target.getAttribute("data-id")), 300);
       }
     }, 350);
   };
 
-  // ——— گزارش و اشتراک ———
+  // باز کردن entity از هش URL
+  if (location.hash?.startsWith("#entity-")) {
+    const entityId = location.hash.slice(8);
+    setTimeout(() => window.scrollToEntity(entityId), 500);
+  }
+
+  // گزارش و اشتراک
   document.querySelectorAll(".report-btn").forEach(btn => {
-    btn.addEventListener("click", () => alert(`گزارش خرابی برای «${btn.getAttribute("data-name")}» ثبت شد.`));
-  });
-  document.querySelectorAll(".share-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const url = btn.getAttribute("data-url") ?? location.href;
       const name = btn.getAttribute("data-name") ?? "";
+      const url = location.href;
       try {
-        if (navigator.share) await navigator.share({ title: name, url });
-        else { await navigator.clipboard.writeText(url); alert("لینک کپی شد!"); }
+        await fetch(`${SB_URL}/rest/v1/link_suggestions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` },
+          body: JSON.stringify({ target_name: name, target_url: url, notes: "گزارش خرابی لینک" }),
+        });
+        alert(`گزارش خرابی برای «${name}» ثبت شد.`);
+      } catch {
+        alert("خطا در ثبت گزارش. لطفاً دوباره تلاش کنید.");
+      }
+    });
+  });
+  function buildShareText(entity) {
+    const enc = p => {
+      const labels = { telegram: "تلگرام", instagram: "اینستاگرام", youtube: "یوتیوب",
+        website: "وبسایت", tiktok: "تیک‌تاک", twitter: "توییتر", x: "ایکس",
+        aparat: "آپارات", linkedin: "لینکدین", whatsapp: "واتساپ", facebook: "فیسبوک",
+        spotify: "اسپاتیفای", soundcloud: "ساندکلاد", discord: "دیسکورد", threads: "تردز",
+        email: "ایمیل", blog: "وبلاگ" };
+      return labels[p] || p;
+    };
+    let t = entity.title ? `${entity.name} — ${entity.title}` : entity.name;
+    if (entity.description) t += `\n${entity.description.replace(/<[^>]*>/g,"").trim().slice(0,200)}`;
+    if (entity.links?.length) {
+      t += `\n\n🔗 لینک‌ها:`;
+      entity.links.forEach(l => { t += `\n• ${enc(l.platform)}: ${l.url}`; });
+    }
+    t += `\n\n✦ سقیفه\nدریچه‌ای به منابع تاریخی و پژوهشی\n🌐 saqifah.com`;
+    return t;
+  }
+
+  function showFeedback(e) {
+    const el = document.createElement("div");
+    el.className = "copy-feedback";
+    el.innerText = "متن کپی و آماده ارسال شد";
+    el.style.left = `${e.clientX}px`;
+    el.style.top = `${e.clientY - 40}px`;
+    document.body.appendChild(el);
+    setTimeout(() => { el.classList.add("fade-out"); setTimeout(() => el.remove(), 400); }, 1000);
+  }
+
+  document.querySelectorAll(".share-btn").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      const raw = btn.getAttribute("data-entity");
+      if (!raw) return;
+      try {
+        const entity = JSON.parse(raw);
+        const text = buildShareText(entity);
+        if (navigator.share) await navigator.share({ title: entity.name, text });
+        else { await navigator.clipboard.writeText(text); showFeedback(e); }
       } catch {}
     });
   });

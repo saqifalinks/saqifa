@@ -2,12 +2,12 @@
   --bg: #090d14;
   --surface: #121a25;
   --surface-soft: #1a2431;
-  --text: #f3f7ff;
+  --text: #21293a;
   --muted: #adc0db;
   --gold: #d4af37;
   --border: #253447;
   --success: #00c087;
-  --primary: #0d735d;
+  --primary: #068f8f;
   --card-bg: #101823;
   --text-main: #f3f7ff;
   --text-dim: #adc0db;
@@ -33,7 +33,7 @@ html[data-theme="light"] {
   --text: #10233d;
   --muted: #5b708e;
   --border: #d5e3f7;
-  --primary: #0a8a6e;
+  --primary: #008080;
   --card-bg: #ffffff;
   --text-main: #10233d;
   --text-dim: #5b708e;

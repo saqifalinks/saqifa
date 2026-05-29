@@ -423,8 +423,9 @@ const searchData = entities.map(e => ({
   .entity-title {
     font-size: 11px;
     font-weight: 700;
-    color: var(--text-main);
+    color: #068f8f;
   }
+  :global(html[data-theme="light"]) .entity-title { color: #008080; }
 
   .chevron {
     color: var(--text-dim);

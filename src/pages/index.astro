@@ -122,7 +122,7 @@ const stats = [
     {langCategories.length > 0 && (
       <div class="rn-cat-group">
         <button class="rn-cat-btn group-trigger" type="button">
-          <span class="iconify" data-icon="ph:translate-bold" data-width="22"></span>
+          {isLocalIcon('Languages') ? <img src="/icons/Languages.svg" width="22" height="22" alt=""> : <span class="iconify" data-icon="ph:translate-bold" data-width="22"></span>}
           <span class="rn-cat-label">زبان</span>
           <span class="iconify group-chevron" data-icon="ph:caret-left-bold" data-width="10"></span>
         </button>
@@ -255,7 +255,7 @@ const stats = [
       </div>
       <div class="mob-extra-links">
         <button class="mob-lang-btn glass-card" id="mob-lang-btn" type="button">
-          <span class="iconify" data-icon="ph:translate-bold" data-width="20" style="color:var(--primary)"></span>
+          {isLocalIcon('Languages') ? <img src="/icons/Languages.svg" width="20" height="20" alt=""> : <span class="iconify" data-icon="ph:translate-bold" data-width="20" style="color:var(--primary)"></span>}
           <span>زبان</span>
           <span class="iconify mob-chevron" data-icon="ph:caret-down-bold" data-width="12"></span>
         </button>
@@ -273,7 +273,7 @@ const stats = [
       <div class="mob-lang-overlay" id="mob-lang-overlay" style="display:none">
         <div class="mob-lang-panel">
           <div class="mob-lang-header">
-            <span class="iconify" data-icon="ph:translate-bold" data-width="22" style="color:var(--primary)"></span>
+            {isLocalIcon('Languages') ? <img src="/icons/Languages.svg" width="22" height="22" alt="" style="color:var(--primary)"> : <span class="iconify" data-icon="ph:translate-bold" data-width="22" style="color:var(--primary)"></span>}
             <span>انتخاب زبان</span>
             <button class="mob-lang-close" id="mob-lang-close" type="button">
               <span class="iconify" data-icon="ph:x-bold" data-width="18"></span>

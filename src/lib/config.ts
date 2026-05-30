@@ -10,19 +10,17 @@
 export const CATEGORY_ICONS: Record<string, string> = {
   scholars: 'mosque',
   library: 'book-bookmark',
-  inviter: 'microphone',
-  cultural: 'pencil',
-  religious: 'building',
-  m1: 'folder',
-  m2: 'folder',
-  m3: 'folder',
-  m4: 'folder',
-  m5: 'folder',
-  m6: 'folder',
-  m7: 'folder',
-  m8: 'folder',
-  m9: 'folder',
-  m10: 'folder',
+  Inviter: 'microphone',   // مراکز دینی
+  Cultural: 'pencil',      // فرهنگی
+  Religious: 'building',   // مدارس دینی
+  Mosques: 'building',
+  Regions: 'map-pin',
+  Balochi: 'translate',
+  Arabic: 'translate',
+  Kurdish: 'translate',
+  Turkish: 'translate',
+  Pashto: 'translate',
+  Turkmen: 'translate',
 };
 
 // ---- پلتفرم‌های شبکه‌های اجتماعی ----
@@ -81,7 +79,7 @@ export const SOCIAL_LINKS: { url: string; icon: string; label: string }[] = [
 export const SAQIFAH_SITE = "https://saqifah.com";
 
 // ---- آیکون‌های محلی (public/icons/) ----
-export const LOCAL_ICONS = new Set(['scholars']);
+export const LOCAL_ICONS = new Set(['scholars', 'Inviter', 'Mosques']);
 
 // ---- تابع کمکی: گرفتن آیکون دسته از روی slug ----
 export function getCategoryIcon(slug: string): string {

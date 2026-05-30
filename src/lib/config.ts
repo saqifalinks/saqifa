@@ -79,7 +79,7 @@ export const SOCIAL_LINKS: { url: string; icon: string; label: string }[] = [
 export const SAQIFAH_SITE = "https://saqifah.com";
 
 // ---- آیکون‌های محلی (public/icons/) ----
-export const LOCAL_ICONS = new Set(['scholars', 'Inviter', 'Mosques']);
+export const LOCAL_ICONS = new Set(['scholars', 'library', 'Inviter', 'Cultural', 'Religious', 'Mosques', 'Regions']);
 
 // ---- تابع کمکی: گرفتن آیکون دسته از روی slug ----
 export function getCategoryIcon(slug: string): string {

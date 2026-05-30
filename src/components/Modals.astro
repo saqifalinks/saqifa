@@ -72,7 +72,7 @@ const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
                   <span class="iconify" data-icon={p.icon} data-width="16"></span>
                 </div>
                 <span class="pr-label">{p.label}</span>
-                <input type="url" id={`link-${p.id}`} placeholder={p.id === 'castbox' ? 'https://castbox.fm/...' : p.id === 'bluesky' ? 'https://bsky.app/...' : `https://${p.id}.com/...`} dir="ltr" class="pr-input" />
+                <input type="text" id={`link-${p.id}`} placeholder="آی دی یا آدرس کامل" dir="ltr" class="pr-input" />
               </div>
             ))}
           </div>

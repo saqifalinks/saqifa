@@ -46,6 +46,7 @@ export const PLATFORMS: Record<string, { icon: string; color: string; name_en: s
   توییتر:   { icon: 'simple-icons:twitter',      color: '#1DA1F2', name_en: 'twitter' },
   پینترست:  { icon: 'simple-icons:pinterest',    color: '#E60023', name_en: 'pinterest' },
   ایمیل:    { icon: 'ph:envelope-bold',          color: '#EA4335', name_en: 'email' },
+  تماس:     { icon: 'ph:phone-bold',             color: '#10B981', name_en: 'phone' },
   وبلاگ:    { icon: 'ph:article-bold',           color: '#FF8F00', name_en: 'blog' },
 };
 
@@ -65,6 +66,8 @@ export const SUGGEST_PLATFORMS: { id: string; icon: string; label: string; color
   { id: 'castbox',    icon: 'simple-icons:castbox',     label: 'کاست‌باکس', color: '#F55B23' },
   { id: 'threads',    icon: 'simple-icons:threads',     label: 'تردز',      color: '#000000' },
   { id: 'bluesky',    icon: 'simple-icons:bluesky',     label: 'بلواسکای',  color: '#0285FF' },
+  { id: 'email',      icon: 'ph:envelope-bold',         label: 'ایمیل',     color: '#EA4335' },
+  { id: 'phone',      icon: 'ph:phone-bold',            label: 'تماس',      color: '#10B981' },
 ];
 
 // ---- شبکه‌های اجتماعی منوی چپ دسکتاپ ----

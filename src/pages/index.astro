@@ -1498,7 +1498,7 @@ html[data-theme="light"] .disclaimer-box {
     });
     div.querySelector(".social-scroll")?.addEventListener("scroll",()=>updateSA(entity.id));
     div.querySelector(".report-btn")?.addEventListener("click",async()=>{try{await fetch(`${SB_URL}/rest/v1/link_suggestions`,{method:"POST",headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`},body:JSON.stringify({target_name:entity.name,target_url:location.href,notes:"گزارش خرابی لینک"})});alert(`گزارش خرابی لینک برای «${entity.name}» ثبت شد.`);}catch{alert("خطا در ثبت گزارش.");}});
-    div.querySelector(".share-btn")?.addEventListener("click",async e=>{try{const text=buildShareText(entity);if(navigator.share)await navigator.share({title:entity.name,text});else{await navigator.clipboard.writeText(text);showFeedback(e);}}catch{}});
+    div.querySelector(".share-btn")?.addEventListener("click",async e=>{try{const text=buildShareText(entity);if(navigator.share)await navigator.share({title:"",text});else{await navigator.clipboard.writeText(text);showFeedback(e);}}catch{}});
     return div;
   }
 
@@ -1516,16 +1516,16 @@ html[data-theme="light"] .disclaimer-box {
         website: "وبسایت", tiktok: "تیک‌تاک", twitter: "توییتر", x: "ایکس",
         aparat: "آپارات", whatsapp: "واتساپ", facebook: "فیسبوک",
         castbox: "کاست‌باکس", soundcloud: "ساندکلاد", bluesky: "بلواسکای", threads: "تردز",
-        email: "ایمیل", blog: "وبلاگ" };
+        email: "ایمیل", phone: "تماس", blog: "وبلاگ" };
       return labels[p] || p;
     };
-    let t = entity.title ? `${entity.name} — ${entity.title}` : entity.name;
-    if (entity.description) t += `\n${entity.description.replace(/<[^>]*>/g,"").trim().slice(0,200)}`;
+    let t = entity.description ? entity.description.replace(/<[^>]*>/g,"").trim().slice(0,200) : '';
     if (entity.links?.length) {
-      t += `\n\n🔗 لینک‌ها:`;
+      if (t) t += `\n\n🔗 لینک‌ها:`;
+      else t = `🔗 لینک‌ها:`;
       entity.links.forEach(l => { t += `\n• ${enc(l.platform)}: ${l.url}`; });
     }
-    t += `\n\n✦ سقیفه\nدریچه‌ای به منابع تاریخی و پژوهشی\n🌐 saqifah.com`;
+    t += `\n\n✨ لینکدونی سقیفه\n${'-'.repeat(27)}\nhttps://saqifah.vercel.app/`;
     return t;
   }
 

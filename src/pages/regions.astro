@@ -721,16 +721,17 @@ const searchData = entities.map(e => ({
         website: "وبسایت", tiktok: "تیک‌تاک", twitter: "توییتر", x: "ایکس",
         aparat: "آپارات", whatsapp: "واتساپ", facebook: "فیسبوک",
         castbox: "کاست‌باکس", soundcloud: "ساندکلاد", bluesky: "بلواسکای", threads: "تردز",
-        email: "ایمیل", blog: "وبلاگ" };
+        email: "ایمیل", phone: "تماس", blog: "وبلاگ" };
       return labels[p] || p;
     };
-    let t = entity.title ? `${entity.name} — ${entity.title}` : entity.name;
-    if (entity.description) t += `\n${entity.description.replace(/<[^>]*>/g,"").trim().slice(0,200)}`;
+    const desc = entity.description?.replace(/<[^>]*>/g,"").trim();
+    let t = (desc && desc !== entity.title?.trim()) ? desc.slice(0,200) : '';
     if (entity.links?.length) {
-      t += `\n\n🔗 لینک‌ها:`;
+      if (t) t += `\n\n🔗 لینک‌ها:`;
+      else t = `🔗 لینک‌ها:`;
       entity.links.forEach(l => { t += `\n• ${enc(l.platform)}: ${l.url}`; });
     }
-    t += `\n\n✦ سقیفه\nدریچه‌ای به منابع تاریخی و پژوهشی\n🌐 saqifah.com`;
+    t += `\n\n✨ لینکدونی سقیفه\n${'-'.repeat(27)}\nhttps://saqifah.vercel.app/`;
     return t;
   }
 
@@ -752,7 +753,7 @@ const searchData = entities.map(e => ({
       try{
         const entity=JSON.parse(raw);
         const text=buildShareText(entity);
-        if(navigator.share) await navigator.share({title:entity.name,text});
+        if(navigator.share) await navigator.share({title:"",text});
         else{await navigator.clipboard.writeText(text);showFeedback(e);}
       }catch{}
     });

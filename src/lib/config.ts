@@ -13,7 +13,6 @@ export const CATEGORY_ICONS: Record<string, string> = {
   Inviter: 'users',
   Cultural: 'palette',
   Religious: 'cross',
-  'Religious-Activists': 'megaphone',
   Political: 'buildings',
   Regions: 'map-trifold',
 };
@@ -77,7 +76,7 @@ export const SOCIAL_LINKS: { url: string; icon: string; label: string }[] = [
 export const SAQIFAH_SITE = "https://saqifah.com";
 
 // ---- آیکون‌های محلی (public/icons/) ----
-export const LOCAL_ICONS = new Set(['scholars', 'library', 'Inviter', 'Cultural', 'Religious', 'Political', 'Regions', 'Languages']);
+export const LOCAL_ICONS = new Set(['scholars', 'library', 'Inviter', 'Cultural', 'Religious', 'Religious-Activists', 'Political', 'Regions', 'Languages']);
 
 // ---- تابع کمکی: گرفتن آیکون دسته از روی slug ----
 export function getCategoryIcon(slug: string): string {

@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
-import { getCategoryIcon, isLocalIcon, PLATFORMS } from "../lib/config";
+import { getCategoryIcon, isLocalIcon, normalizeUrl, PLATFORMS } from "../lib/config";
 import Modals from '../components/Modals.astro';
 
 type Slide = { slide_type: "book"|"video"|"audio"|"article"; title: string; description: string; url: string; };
@@ -23,10 +23,10 @@ function getTodayDayId(n: number) {
 }
 function mapLegacyRow(row: LegacyDailyRow): Slide[] {
   const r: Slide[] = [];
-  if (row.book_json?.title)    r.push({ slide_type:"book",    title:String(row.book_json.title),    description:String(row.book_json.description??""),    url:String(row.book_json.url??"#") });
-  if (row.video_json?.title)   r.push({ slide_type:"video",   title:String(row.video_json.title),   description:String(row.video_json.description??""),   url:String(row.video_json.url??"#") });
-  if (row.audio_json?.title)   r.push({ slide_type:"audio",   title:String(row.audio_json.title),   description:String(row.audio_json.description??""),   url:String(row.audio_json.url??"#") });
-  if (row.article_json?.title) r.push({ slide_type:"article", title:String(row.article_json.title), description:String(row.article_json.description??""), url:String(row.article_json.url??"#") });
+  if (row.book_json?.title)    r.push({ slide_type:"book",    title:String(row.book_json.title),    description:String(row.book_json.description??""),    url:normalizeUrl(String(row.book_json.url??"#")) });
+  if (row.video_json?.title)   r.push({ slide_type:"video",   title:String(row.video_json.title),   description:String(row.video_json.description??""),   url:normalizeUrl(String(row.video_json.url??"#")) });
+  if (row.audio_json?.title)   r.push({ slide_type:"audio",   title:String(row.audio_json.title),   description:String(row.audio_json.description??""),   url:normalizeUrl(String(row.audio_json.url??"#")) });
+  if (row.article_json?.title) r.push({ slide_type:"article", title:String(row.article_json.title), description:String(row.article_json.description??""), url:normalizeUrl(String(row.article_json.url??"#")) });
   return r;
 }
 
@@ -1200,7 +1200,7 @@ html[data-theme="light"] .disclaimer-box {
     const s=slides[idx];
     titleEl.textContent=s.title||"بدون عنوان";
     descEl.textContent=s.description||"";
-    linkEl.href=s.url||"#";
+    linkEl.href = s.url && s.url !== '#' ? s.url : '#';
     btnTextEl.textContent=ctaMap[s.slide_type]||"بیشتر بخوانید";
     const cur = document.getElementById("slide-icon");
     if (cur) {
@@ -1341,7 +1341,8 @@ html[data-theme="light"] .disclaimer-box {
           html+=`<p class="ms-section-title">پلتفرم‌ها</p>`;
           links.forEach(l=>{
             const pi=getP(l.platform);
-            html+=`<a href="${l.url}" target="_blank" rel="noreferrer" class="ms-entity-card" data-url="${l.url}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 16px;color:var(--text-main);text-decoration:none;width:100%"><div style="display:flex;align-items:center;gap:8px"><span class="iconify" data-icon="${pi.icon}" data-width="18" style="color:${pi.color}"></span><span style="font-size:13px;font-weight:700">${pi.label}</span></div><span style="font-size:12px;padding-right:26px;color:var(--text-muted)">${l.entities?.name??""}</span></a><div class="ms-divider"></div>`;
+            const nu=normalizeUrl(l.url,l.platform);
+            html+=`<a href="${nu}" target="_blank" rel="noreferrer" class="ms-entity-card" data-url="${nu}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 16px;color:var(--text-main);text-decoration:none;width:100%"><div style="display:flex;align-items:center;gap:8px"><span class="iconify" data-icon="${pi.icon}" data-width="18" style="color:${pi.color}"></span><span style="font-size:13px;font-weight:700">${pi.label}</span></div><span style="font-size:12px;padding-right:26px;color:var(--text-muted)">${l.entities?.name??""}</span></a><div class="ms-divider"></div>`;
           });
         }
       }
@@ -1432,7 +1433,8 @@ html[data-theme="light"] .disclaimer-box {
           html+=`<p class="ds-section-title">پلتفرم‌ها</p>`;
           links.forEach(l=>{
             const pi=getP(l.platform);
-            html+=`<a href="${l.url}" target="_blank" rel="noreferrer" class="ds-item" data-url="${l.url}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:8px;color:var(--text-main);text-decoration:none;width:100%"><div style="display:flex;align-items:center;gap:8px"><span class="iconify" data-icon="${pi.icon}" data-width="18" style="color:${pi.color}"></span><span style="font-size:13px;font-weight:700">${pi.label}</span></div><span style="font-size:12px;padding-right:26px;color:var(--text-muted)">${l.entities?.name??""}</span></a><div class="ds-divider"></div>`;
+            const nu=normalizeUrl(l.url,l.platform);
+            html+=`<a href="${nu}" target="_blank" rel="noreferrer" class="ds-item" data-url="${nu}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:8px;color:var(--text-main);text-decoration:none;width:100%"><div style="display:flex;align-items:center;gap:8px"><span class="iconify" data-icon="${pi.icon}" data-width="18" style="color:${pi.color}"></span><span style="font-size:13px;font-weight:700">${pi.label}</span></div><span style="font-size:12px;padding-right:26px;color:var(--text-muted)">${l.entities?.name??""}</span></a><div class="ds-divider"></div>`;
           });
         }
       }
@@ -1477,13 +1479,22 @@ html[data-theme="light"] .disclaimer-box {
     return {icon:"ph:link-bold",color:"#888",label:p??"لینک"};
   }
 
+  function normalizeUrl(url, platform) {
+    if (!url) return url;
+    const u = url.trim();
+    if (platform === 'ایمیل') return u.startsWith('mailto:') ? u : 'mailto:' + u;
+    if (platform === 'تماس') return u.startsWith('tel:') ? u : 'tel:' + u;
+    if (!u.startsWith('http://') && !u.startsWith('https://')) return 'https://' + u;
+    return u;
+  }
+
   function renderEntity(entity) {
     const color=getAVColor(entity.name);
     const initial=entity.name?.trim()?.[0]??"؟";
     const links=(entity.links??[]).sort((a,b)=>a.display_order-b.display_order);
     const av=entity.avatar_url?`<img src="${entity.avatar_url}" alt="" style="width:100%;height:100%;object-fit:cover">`
       :initial;
-    const linksHtml=links.map(l=>{const p=getP(l.platform);return`<a href="${l.url}" target="_blank" rel="noreferrer" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}"><span class="iconify" data-icon="${p.icon}" data-width="22"></span></a>`;}).join("")||`<p class="no-links">لینکی ثبت نشده.</p>`;
+    const linksHtml=links.map(l=>{const p=getP(l.platform);const nu=normalizeUrl(l.url,l.platform);return`<a href="${nu}" target="_blank" rel="noreferrer" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}"><span class="iconify" data-icon="${p.icon}" data-width="22"></span></a>`;}).join("")||`<p class="no-links">لینکی ثبت نشده.</p>`;
     const div=document.createElement("div");
     div.className="entity-item"; div.setAttribute("data-id",entity.id);
     div.innerHTML=`<button class="entity-row" type="button" aria-expanded="false"><div class="avatar" style="--av:${color}">${av}</div><div class="entity-meta"><span class="entity-name">${entity.name}${entity.verification_type==='blue'?'<span class="iconify" data-icon="ph:seal-check-fill" data-width="14" style="color:#3b9eff"></span>':entity.verification_type==='gold'?'<span class="iconify" data-icon="ph:seal-check-fill" data-width="14" style="color:#d4af37"></span>':''}</span>${entity.title?`<span class="entity-title-text">${entity.title}</span>`:''}</div><span class="iconify chevron-icon" data-icon="ph:caret-down-bold" data-width="13"></span></button><div class="acc-body"><div class="acc-inner">${entity.description?`<p class="acc-bio">${entity.description}</p>`:''}<div class="social-scroll-wrap"><div class="social-scroll" data-sid="${entity.id}">${linksHtml}</div><button class="scroll-arr scroll-arr--r" data-dir="right" data-sid="${entity.id}" type="button"><span class="iconify" data-icon="ph:caret-left-bold" data-width="11"></span></button><button class="scroll-arr scroll-arr--l" data-dir="left" data-sid="${entity.id}" type="button"><span class="iconify" data-icon="ph:caret-right-bold" data-width="11"></span></button></div><div class="acc-actions"><button class="action-btn report-btn" data-name="${entity.name}" type="button"><span class="iconify" data-icon="ph:warning-bold" data-width="13"></span> گزارش خرابی لینک</button><button class="action-btn share-btn" data-name="${entity.name}" data-url="${location.href}" type="button"><span class="iconify" data-icon="ph:share-network-bold" data-width="13"></span> اشتراک‌گذاری</button></div></div></div>`;

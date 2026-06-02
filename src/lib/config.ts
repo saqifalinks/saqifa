@@ -103,3 +103,12 @@ export function getPlatformInfo(platform: string): { icon: string; color: string
   }
   return { icon: 'ph:link-bold', color: '#888888', label: platform || 'لینک' };
 }
+
+export function normalizeUrl(url: string, platform?: string): string {
+  if (!url) return url;
+  const u = url.trim();
+  if (platform === 'ایمیل') return u.startsWith('mailto:') ? u : `mailto:${u}`;
+  if (platform === 'تماس') return u.startsWith('tel:') ? u : `tel:${u}`;
+  if (!u.startsWith('http://') && !u.startsWith('https://')) return `https://${u}`;
+  return u;
+}

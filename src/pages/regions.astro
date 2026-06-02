@@ -3,7 +3,7 @@ export const prerender = false;
 
 import Layout from '../layouts/Layout.astro';
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
-import { getCategoryIcon, getPlatformInfo } from "../lib/config";
+import { getCategoryIcon, getPlatformInfo, normalizeUrl } from "../lib/config";
 
 const SB_URL = import.meta.env.SUPABASE_URL;
 const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
@@ -125,7 +125,7 @@ const searchData = entities.map(e => ({
   color: getAvatarColor(e.name),
   initial: getInitial(e.name),
   verification_type: e.verification_type,
-  links: e.links.map(l => ({ url: l.url, platform: l.platform, ...getPlatformInfo(l.platform) })),
+  links: e.links.map(l => ({ url: normalizeUrl(l.url, l.platform), platform: l.platform, ...getPlatformInfo(l.platform) })),
 }));
 ---
 
@@ -213,7 +213,7 @@ const searchData = entities.map(e => ({
                       {entity.links.map((link) => {
                         const p = getPlatformInfo(link.platform);
                         return (
-                          <a href={link.url} target="_blank" rel="noreferrer noopener"
+                          <a href={normalizeUrl(link.url, link.platform)} target="_blank" rel="noreferrer noopener"
                             class="social-icon-btn" style={`--pc:${p.color}`}
                             title={p.label} aria-label={p.label}>
                             <span class="iconify" data-icon={p.icon} data-width="22" data-height="22"></span>
@@ -238,7 +238,7 @@ const searchData = entities.map(e => ({
                     گزارش خرابی
                   </button>
                   <button class="action-btn share-btn" type="button"
-                    data-entity={JSON.stringify({name:entity.name,title:entity.title,description:entity.description,links:entity.links.map(l=>({platform:l.platform,url:l.url}))})}>
+                    data-entity={JSON.stringify({name:entity.name,title:entity.title,description:entity.description,links:entity.links.map(l=>({platform:l.platform,url:normalizeUrl(l.url,l.platform)}))})}>
                     <span class="iconify" data-icon="ph:share-network" data-width="14" data-height="14"></span>
                     اشتراک‌گذاری
                   </button>

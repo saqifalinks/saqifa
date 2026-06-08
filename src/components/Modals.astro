@@ -135,12 +135,33 @@ const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
         } catch { errors.push(p); }
       }
 
-      if (msg) {
-        if (errors.length === 0) {
-          msg.textContent = "✅ پیشنهاد شما با موفقیت ثبت شد.";
-          msg.style.color = "var(--success)";
-          form.reset();
-        } else {
+      if (errors.length === 0) {
+        // بستن مودال
+        const ov = document.getElementById("modal-overlay");
+        if (ov) ov.style.display = "none";
+        form.reset();
+        // پیام موفقیت بعد از بسته شدن مودال
+        setTimeout(() => {
+          const toast = document.createElement("div");
+          toast.className = "modal-toast";
+          toast.textContent = "✅ لینک‌های شما با موفقیت ارسال شد.";
+          toast.style.opacity = "0";
+          toast.style.transform = "translateX(-50%) translateY(-20px)";
+          document.body.appendChild(toast);
+          requestAnimationFrame(() => {
+            toast.style.transition = "opacity 0.3s ease-out, transform 0.3s ease-out";
+            toast.style.opacity = "1";
+            toast.style.transform = "translateX(-50%) translateY(0)";
+          });
+          setTimeout(() => {
+            toast.style.transition = "opacity 0.4s, transform 0.4s";
+            toast.style.opacity = "0";
+            toast.style.transform = "translateX(-50%) translateY(-10px)";
+            setTimeout(() => toast.remove(), 400);
+          }, 2500);
+        }, 300);
+      } else {
+        if (msg) {
           msg.textContent = `❌ خطا در ارسال ${errors.join(", ")}.`;
           msg.style.color = "#ff5252";
         }
@@ -369,5 +390,13 @@ const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
     color: #000000;
     background: color-mix(in srgb, #000000 12%, transparent);
     border-color: #000000;
+  }
+
+  :global(.modal-toast) {
+    position: fixed; top: 30px; left: 50%; transform: translateX(-50%); z-index: 5000;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 14px 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    font-size: 14px; font-weight: 700; color: var(--text-main); text-align: center;
+    direction: rtl; pointer-events: none;
   }
 </style>

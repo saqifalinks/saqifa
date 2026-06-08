@@ -60,7 +60,7 @@ if (isSupabaseConfigured && supabase) {
 
       let entityQuery = supabase
         .from("entities")
-        .select("id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order)")
+        .select("id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order),entity_filter_values(filter_option_id,filter_options(id,value))")
         .eq("category_id", category.id);
 
       const filterKeys = Object.keys(activeFilters);
@@ -126,6 +126,7 @@ const searchData = entities.map(e => ({
   initial: getInitial(e.name),
   verification_type: e.verification_type,
   links: e.links.map(l => ({ url: normalizeUrl(l.url, l.platform), platform: l.platform, ...getPlatformInfo(l.platform) })),
+  filterValues: (e.entity_filter_values ?? []).map(efv => efv.filter_options?.value ?? '').filter(Boolean),
 }));
 ---
 
@@ -146,12 +147,16 @@ const searchData = entities.map(e => ({
             <div class="fscroll-wrap">
               <div class="filter-options" data-fscroll={f.slug}>
                 <a href={`/regions`}
-                  class={`filter-chip${!activeFilters[f.slug] ? " active" : ""}`}>
+                  class={`filter-chip${!activeFilters[f.slug] ? " active" : ""}`}
+                  data-filter-slug={f.slug}
+                  data-option-id="">
                   همه
                 </a>
                 {f.options.map(o => (
                   <a href={`/regions?${f.slug}=${o.id}`}
-                    class={`filter-chip${activeFilters[f.slug] === String(o.id) ? " active" : ""}`}>
+                    class={`filter-chip${activeFilters[f.slug] === String(o.id) ? " active" : ""}`}
+                    data-filter-slug={f.slug}
+                    data-option-id={o.id}>
                     {o.value}
                   </a>
                 ))}
@@ -169,7 +174,7 @@ const searchData = entities.map(e => ({
     )}
 
     <!-- لیست -->
-    <main class="entity-list">
+    <main class="entity-list" id="entity-list">
       {pageError && <p class="empty-state">{pageError}</p>}
       {!pageError && entities.length === 0 && <p class="empty-state">هنوز موردی ثبت نشده است.</p>}
 
@@ -556,6 +561,19 @@ const searchData = entities.map(e => ({
   :global(.bs-r-info) { flex: 1; min-width: 0; line-height: 1.4; }
   :global(.bs-r-info strong) { font-size: 13px; }
   :global(.bs-r-info small) { font-size: 11px; color: var(--text-dim); }
+  :global(.bs-section-title) { font-size: 11px; font-weight: 800; color: var(--text-dim); padding: 10px 16px 4px; margin: 0; }
+  :global(.bs-divider) { height: 1px; background: var(--border); margin: 0 16px; opacity: 0.4; }
+  :global(.bs-link-card) {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    text-decoration: none; transition: background 0.12s;
+  }
+  :global(.bs-link-card:hover) { background: color-mix(in srgb,var(--primary) 5%,transparent); }
+  :global(.bs-link-icon) {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  :global(.bs-link-platform) { font-size: 11px; color: var(--text-dim); }
+  :global(.bs-link-name) { font-size: 13px; font-weight: 800; color: var(--text-main); }
 
   .copy-feedback {
     position: fixed; z-index: 9999; background: var(--primary); color: #fff;
@@ -565,19 +583,20 @@ const searchData = entities.map(e => ({
   .copy-feedback.fade-out { opacity: 0; }
 </style>
 
-<script is:inline define:vars={{ searchData, SB_URL, SB_KEY }}>
+<script is:inline define:vars={{ searchData, SB_URL, SB_KEY, categoryId: category?.id ?? '' }}>
   // آکاردئون
-  document.querySelectorAll(".entity-row").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      const expanded=btn.getAttribute("aria-expanded")==="true";
-      btn.setAttribute("aria-expanded",!expanded);
-      const body=btn.nextElementSibling;
-      if (body) body.style.maxHeight=expanded?"0":body.scrollHeight+"px";
-      if (!expanded) {
-        const item = btn.closest(".entity-item");
-        if (item) setTimeout(() => updateScrollArrows(item.getAttribute("data-id")), 350);
-      }
-    });
+  // آکاردئون (delegation)
+  document.getElementById("entity-list")?.addEventListener("click",e=>{
+    const btn=e.target.closest(".entity-row");
+    if(!btn)return;
+    const expanded=btn.getAttribute("aria-expanded")==="true";
+    btn.setAttribute("aria-expanded",!expanded);
+    const body=btn.nextElementSibling;
+    if(body) body.style.maxHeight=expanded?"0":body.scrollHeight+"px";
+    if(!expanded){
+      const item=btn.closest(".entity-item");
+      if(item) setTimeout(()=>updateScrollArrows(item.getAttribute("data-id")),350);
+    }
   });
 
   // اسکرول افقی
@@ -589,18 +608,23 @@ const searchData = entities.map(e => ({
     document.querySelector(`.scroll-arr--l[data-target="${id}"]`)?.classList.toggle("visible", hasOverflow);
   }
 
-  document.querySelectorAll(".social-scroll").forEach(s => {
-    s.addEventListener("scroll", () => updateScrollArrows(s.getAttribute("data-scroll-id")));
+  // اسکرول افقی — دکمه‌ها (delegation)
+  document.getElementById("entity-list")?.addEventListener("click",e=>{
+    const arr=e.target.closest(".scroll-arr");
+    if(!arr)return;
+    e.stopPropagation();
+    const target=document.querySelector(`[data-scroll-id="${arr.dataset.target}"]`);
+    if(!target)return;
+    target.scrollBy({left:arr.dataset.dir==="right"?120:-120,behavior:"smooth"});
   });
-
-  document.querySelectorAll(".scroll-arr").forEach(arr=>{
-    arr.addEventListener("click",()=>{
-      const target=document.querySelector(`[data-scroll-id="${arr.dataset.target}"]`);
-      if (!target) return;
-      const dir=arr.dataset.dir==="right"?1:-1;
-      target.scrollBy({left:dir*120,behavior:"smooth"});
+  // اسکرول افقی — اسکرول (نیاز به بایند مستقیم)
+  function bindSocialScrolls(){
+    document.querySelectorAll(".social-scroll:not(._bound-ss)").forEach(s=>{
+      s.classList.add("_bound-ss");
+      s.addEventListener("scroll",()=>updateScrollArrows(s.getAttribute("data-scroll-id")));
     });
-  });
+  }
+  bindSocialScrolls();
 
   // اسکرول فیلتر
   function updateFScroll(fslug) {
@@ -649,6 +673,26 @@ const searchData = entities.map(e => ({
     document.getElementById("edge-scroll")?.scrollBy({left:200,behavior:"smooth"});
   });
 
+  // نرمالایز کاراکتر برای جستجوی چندزبانه
+  function normalizeText(s) {
+    if (!s) return '';
+    return s.replace(/[ًٌٍَُِّْٰٓ]/g,'')
+        .replace(/[يى]/g,'ی').replace(/[ك]/g,'ک')
+        .replace(/[ةھ]/g,'ه').replace(/[إأٱ]/g,'ا')
+        .replace(/[ؤ]/g,'و').replace(/[ئ]/g,'ی')
+        .replace(/[ە]/g,'ه').replace(/[ۓ]/g,'ی')
+        .replace(/[ے]/g,'ی')
+        .replace(/[\s\u200C\u200D\u00A0]/g,'').toLowerCase();
+  }
+  // نرمالایز یکباره داده‌های جستجو
+  searchData.forEach(e => {
+    e._n = normalizeText(e.name);
+    e._t = normalizeText(e.title);
+    e._d = normalizeText(e.description);
+    e._fv = (e.filterValues||[]).map(fv => normalizeText(fv));
+    e._lp = (e.links||[]).map(l => normalizeText(l.platform));
+  });
+
   // جستجو
   const bsBackdrop=document.getElementById("bs-backdrop");
   const bottomSheet=document.getElementById("bottom-sheet");
@@ -656,39 +700,80 @@ const searchData = entities.map(e => ({
   const bsInput=document.getElementById("bs-input");
   const bsResults=document.getElementById("bs-results");
   const bsClear=document.getElementById("bs-clear");
+  let activeFilter="all";
   function openBS(){bottomSheet?.classList.add("open");bsBackdrop?.classList.add("open");setTimeout(()=>bsInput?.focus(),200);}
-  function closeBS(){bottomSheet?.classList.remove("open");bsBackdrop?.classList.remove("open");}
+  function closeBS(){
+    bottomSheet?.classList.remove("open");bsBackdrop?.classList.remove("open");
+    if(bsInput) bsInput.value="";
+    if(bsClear) bsClear.style.display="none";
+    activeFilter="all";
+    document.querySelectorAll(".bs-filter").forEach(b=>b.classList.remove("active"));
+    document.querySelector('.bs-filter[data-filter="all"]')?.classList.add("active");
+    if(bsResults) bsResults.innerHTML='<p class="bs-hint">برای جستجو تایپ کنید...</p>';
+  }
   navSearch?.addEventListener("click",openBS);
   bsBackdrop?.addEventListener("click",closeBS);
   document.querySelectorAll(".bs-filter").forEach(btn=>{
     btn.addEventListener("click",()=>{
       document.querySelectorAll(".bs-filter").forEach(b=>b.classList.remove("active"));
       btn.classList.add("active");
-      if (bsInput) { bsInput.dispatchEvent(new Event("input")); }
+      activeFilter=btn.getAttribute("data-filter")||"all";
+      if (bsInput?.value.trim()) renderResults(bsInput.value.trim());
     });
   });
   bsClear?.addEventListener("click",()=>{
-    if(bsInput){bsInput.value="";bsInput.dispatchEvent(new Event("input"));bsInput.focus();}
+    if(bsInput){bsInput.value="";renderResults("");bsInput.focus();}
   });
   bsInput?.addEventListener("input",()=>{
-    const q=bsInput.value.trim().toLowerCase();
-    const filter=document.querySelector(".bs-filter.active")?.dataset?.filter||"all";
-    if(!bsResults)return;
-    bsClear?.(q?{style:{display:""}}:{style:{display:"none"}});
-    if(q.length<2){bsResults.innerHTML='<p class="bs-hint">حداقل ۲ حرف تایپ کن...</p>';return;}
-    let results=searchData.filter(e=>{
-      if(filter==="entity") return e.name.toLowerCase().includes(q)||e.title.toLowerCase().includes(q);
-      if(filter==="platform") return e.links.some(l=>l.platform.includes(q));
-      return e.name.toLowerCase().includes(q)||e.title.toLowerCase().includes(q)||e.description.toLowerCase().includes(q);
+    const q=bsInput.value;
+    if(bsClear) bsClear.style.display=q?"block":"none";
+    renderResults(q);
+  });
+  function renderResults(query) {
+    if(!bsResults) return;
+    const q=query.trim();
+    if(!q){bsResults.innerHTML='<p class="bs-hint">برای جستجو تایپ کنید...</p>';return;}
+    const nq=normalizeText(q);
+    let entityResults=[];
+    let filterResults=[];
+    let linkResults=[];
+    if(activeFilter==="all"||activeFilter==="entity") {
+      filterResults=searchData.filter(e=>e._fv.some(fv=>fv.includes(nq)));
+      if(!filterResults.length) {
+        entityResults=searchData.filter(e=>
+          e._n.includes(nq)||e._t.includes(nq)||e._d.includes(nq)
+        );
+      }
+    }
+    if(activeFilter==="platform") {
+      searchData.forEach(entity=>{
+        entity.links.forEach(link=>{
+          if(normalizeText(link.platform).includes(nq)){
+            linkResults.push({...link,entityName:entity.name,entityColor:entity.color,entityInitial:entity.initial,entityAvatar:entity.avatar_url});
+          }
+        });
+      });
+    }
+    if(!filterResults.length&&!entityResults.length&&!linkResults.length){bsResults.innerHTML='<p class="bs-hint">نتیجه‌ای یافت نشد.</p>';return;}
+    let out="";
+    // نتایج فیلتر (منطقه و ...) — بدون برچسب
+    filterResults.forEach(e=>{
+      out+=`<button class="bs-result-item" data-id="${e.id}"><div class="bs-r-av" style="background:${e.color}">${e.initial}</div><div class="bs-r-info"><strong>${e.name}</strong>${e.title?"<br><small>"+e.title+"</small>":""}</div><span class="iconify" data-icon="ph:arrow-left" data-width="14" style="margin-right:auto;color:var(--text-dim)"></span></button><div class="bs-divider"></div>`;
     });
-    if(results.length===0){bsResults.innerHTML='<p class="bs-hint">نتیجه‌ای یافت نشد.</p>';return;}
-    bsResults.innerHTML=results.slice(0,20).map(e=>`
-      <button class="bs-result-item" data-id="${e.id}">
-        <div class="bs-r-av" style="background:${e.color}">${e.initial}</div>
-        <div class="bs-r-info"><strong>${e.name}</strong>${e.title?"<br><small>"+e.title+"</small>":""}</div>
-        <span class="iconify" data-icon="ph:arrow-left" data-width="14" style="margin-right:auto;color:var(--text-dim)"></span>
-      </button>
-    `).join("");
+    // نتایج اسم/عنوان — فقط وقتی فیلتری پیدا نشده
+    if(entityResults.length){
+      out+=`<p class="bs-section-title">اشخاص و موسسات</p>`;
+      entityResults.forEach(e=>{
+        out+=`<button class="bs-result-item" data-id="${e.id}"><div class="bs-r-av" style="background:${e.color}">${e.initial}</div><div class="bs-r-info"><strong>${e.name}</strong>${e.title?"<br><small>"+e.title+"</small>":""}</div><span class="iconify" data-icon="ph:arrow-left" data-width="14" style="margin-right:auto;color:var(--text-dim)"></span></button><div class="bs-divider"></div>`;
+      });
+    }
+    if(linkResults.length){
+      out+=`<p class="bs-section-title">پلتفرم‌ها</p>`;
+      linkResults.forEach(l=>{
+        out+=`<a href="${l.url}" target="_blank" rel="noreferrer noopener" class="bs-link-card"><div class="bs-link-icon" style="background:color-mix(in srgb,${l.color} 14%,transparent);color:${l.color}"><span class="iconify" data-icon="${l.icon}" data-width="20" data-height="20"></span></div><div><div class="bs-link-platform">${l.label}</div><div class="bs-link-name">${l.entityName}</div></div></a><div class="bs-divider"></div>`;
+      });
+    }
+    bsResults.innerHTML=out;
     bsResults.querySelectorAll(".bs-result-item").forEach(el=>{
       el.addEventListener("click",()=>{
         const id=el.dataset.id;
@@ -696,7 +781,7 @@ const searchData = entities.map(e => ({
         if(target){closeBS();target.scrollIntoView({behavior:"smooth",block:"center"});target.querySelector(".entity-row")?.click();}
       });
     });
-  });
+  }
 
   // تم
   const html = document.documentElement;
@@ -745,33 +830,145 @@ const searchData = entities.map(e => ({
     setTimeout(() => { el.classList.add("fade-out"); setTimeout(() => el.remove(), 400); }, 1000);
   }
 
-  // Share
-  document.querySelectorAll(".share-btn").forEach(btn=>{
-    btn.addEventListener("click",async e=>{
-      const raw=btn.getAttribute("data-entity");
-      if(!raw)return;
-      try{
-        const entity=JSON.parse(raw);
-        const text=buildShareText(entity);
-        if(navigator.share) await navigator.share({title:"",text});
-        else{await navigator.clipboard.writeText(text);showFeedback(e);}
-      }catch{}
+  // اشتراک (delegation)
+  document.getElementById("entity-list")?.addEventListener("click",async e=>{
+    const btn=e.target.closest(".share-btn");
+    if(!btn)return;
+    const raw=btn.getAttribute("data-entity");
+    if(!raw)return;
+    try{
+      const entity=JSON.parse(raw);
+      const text=buildShareText(entity);
+      if(navigator.share) await navigator.share({title:"",text});
+      else{await navigator.clipboard.writeText(text);showFeedback(e);}
+    }catch{}
+  });
+
+  // گزارش (delegation)
+  document.getElementById("entity-list")?.addEventListener("click",async e=>{
+    const btn=e.target.closest(".report-btn");
+    if(!btn)return;
+    const name=btn.getAttribute("data-name")??"";
+    const url=location.href;
+    try {
+      await fetch(`${SB_URL}/rest/v1/link_suggestions`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`},
+        body:JSON.stringify({target_name:name,target_url:url,notes:"گزارش خرابی لینک"}),
+      });
+      alert(`گزارش خرابی برای «${name}» ثبت شد.`);
+    } catch { alert("خطا در ثبت گزارش. لطفاً دوباره تلاش کنید."); }
+  });
+
+  // ========== فیلتر سوییچینگ سمت کلاینت ==========
+  const PLATFORM_MAP={
+    تلگرام:{icon:"simple-icons:telegram",color:"#29B6F6"},اینستاگرام:{icon:"simple-icons:instagram",color:"#E1306C"},
+    اکس:{icon:"simple-icons:x",color:"#222222"},یوتیوب:{icon:"simple-icons:youtube",color:"#FF0000"},
+    "فیس بوک":{icon:"simple-icons:facebook",color:"#1877F2"},وبسایت:{icon:"ph:globe-bold",color:"#4CAF50"},
+    سایت:{icon:"ph:globe-bold",color:"#4CAF50"},آپارات:{icon:"simple-icons:aparat",color:"#E7194B"},
+    تیک‌تاک:{icon:"simple-icons:tiktok",color:"#010101"},واتساپ:{icon:"simple-icons:whatsapp",color:"#25D366"},
+    ساندکلود:{icon:"simple-icons:soundcloud",color:"#FF5500"},کاست‌باکس:{icon:"simple-icons:castbox",color:"#F55B23"},
+    تردز:{icon:"simple-icons:threads",color:"#000000"},بلواسکای:{icon:"simple-icons:bluesky",color:"#0285FF"},
+    توییتر:{icon:"simple-icons:twitter",color:"#1DA1F2"},پینترست:{icon:"simple-icons:pinterest",color:"#E60023"},
+    ایمیل:{icon:"ph:envelope-bold",color:"#EA4335"},تماس:{icon:"ph:phone-bold",color:"#10B981"},
+    وبلاگ:{icon:"ph:article-bold",color:"#FF8F00"}
+  };
+  function platInfo(p){const d=PLATFORM_MAP[p];return d?{icon:d.icon,color:d.color,label:p}:{icon:"ph:link-bold",color:"#888",label:p||"لینک"};}
+  function normalizeUrl(u,p){if(!u)return u;const t=u.trim();if(p==="ایمیل")return t.startsWith("mailto:")?t:`mailto:${t}`;if(p==="تماس")return t.startsWith("tel:")?t:`tel:${t}`;if(!t.startsWith("http://")&&!t.startsWith("https://"))return`https://${t}`;return t;}
+  const avColors=["#5C6BC0","#26A69A","#EC407A","#AB47BC","#42A5F5","#FF7043","#66BB6A","#FF8F00"];
+  function avColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return avColors[Math.abs(h)%avColors.length];}
+  function getInit(n){return(n?.trim()?.[0])??"؟";}
+  function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+
+  async function fetchAndRender(filters){
+    const list=document.getElementById("entity-list");if(!list)return;
+    list.innerHTML='<p class="empty-state" style="text-align:center;padding:40px;color:var(--text-dim)">در حال جستجو...</p>';
+    const hdrs={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
+    const slugs=Object.keys(filters);let entityIds=null;
+    if(slugs.length>0){
+      const allIds=[];
+      for(const slug of slugs){
+        const optId=filters[slug];
+        const r=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=eq.${optId}&select=entity_id`,{headers:hdrs});
+        const d=await r.json();
+        if(Array.isArray(d)&&d.length)allIds.push([...new Set(d.map(x=>x.entity_id))]);else allIds.push([]);
+      }
+      entityIds=allIds[0];for(let i=1;i<allIds.length;i++)entityIds=entityIds.filter(id=>allIds[i].includes(id));
+      if(!entityIds.length){list.innerHTML='<p class="empty-state">هنوز موردی ثبت نشده است.</p>';updateSearchData([]);return;}
+    }
+    let url=`${SB_URL}/rest/v1/entities?select=id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order),entity_filter_values(filter_option_id,filter_options(id,value))&category_id=eq.${categoryId}&order=created_at.asc`;
+    if(entityIds)url+=`&id=in.(${entityIds.join(",")})`;
+    const r=await fetch(url,{headers:hdrs});const entities=await r.json();
+    if(!Array.isArray(entities)){list.innerHTML='<p class="empty-state">خطا در دریافت اطلاعات.</p>';return;}
+    renderEntities(entities);updateSearchData(entities);bindSocialScrolls();if(window.Iconify)window.Iconify.scan(list);
+  }
+
+  function renderEntities(entities){
+    const list=document.getElementById("entity-list");if(!list)return;
+    if(!entities.length){list.innerHTML='<p class="empty-state">هنوز موردی ثبت نشده است.</p>';return;}
+    let html="";
+    for(const e of entities){
+      const c=avColor(e.name),init=getInit(e.name);
+      const links=(e.links||[]).sort((a,b)=>(a.display_order||0)-(b.display_order||0));
+      const en=escHtml(e.name),et=e.title?escHtml(e.title):"",ed=e.description?escHtml(e.description):"";
+      html+=`<div class="entity-item glass-card" data-id="${e.id}" data-search="${en.toLowerCase()}">`;
+      html+=`<button class="entity-row" type="button" aria-expanded="false">`;
+      html+=`<div class="avatar" style="--av:${c}">`;
+      if(e.avatar_url)html+=`<img src="${escHtml(e.avatar_url)}" alt="${en}" loading="lazy">`;else html+=`<span>${init}</span>`;
+      html+=`</div><div class="entity-meta"><span class="entity-name">${en}`;
+      if(e.verification_type==="blue")html+=` <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#3b9eff"></span>`;
+      else if(e.verification_type==="gold")html+=` <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#d4af37"></span>`;
+      html+=`</span>${et?`<span class="entity-title">${et}</span>`:""}</div>`;
+      html+=`<span class="iconify chevron" data-icon="ph:caret-down" data-width="14" data-height="14"></span>`;
+      html+=`</button><div class="acc-body"><div class="acc-inner">`;
+      if(ed)html+=`<p class="acc-bio">${ed}</p>`;
+      if(links.length){
+        html+=`<div class="social-scroll-wrap"><div class="social-scroll" data-scroll-id="${e.id}">`;
+        for(const l of links){
+          const p=platInfo(l.platform),nu=normalizeUrl(l.url,l.platform);
+          html+=`<a href="${nu}" target="_blank" rel="noreferrer noopener" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><span class="iconify" data-icon="${p.icon}" data-width="22" data-height="22"></span></a>`;
+        }
+        html+=`</div><button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target="${e.id}"><span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span></button><button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target="${e.id}"><span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span></button></div>`;
+      }else html+=`<p class="no-links">لینکی ثبت نشده است.</p>`;
+      const ej=JSON.stringify({name:e.name,title:e.title,description:e.description,links:links.map(l=>({platform:l.platform,url:normalizeUrl(l.url,l.platform)}))}).replace(/'/g,"&#39;");
+      html+=`<div class="acc-actions"><button class="action-btn report-btn" type="button" data-name="${en}"><span class="iconify" data-icon="ph:warning" data-width="14" data-height="14"></span> گزارش خرابی</button><button class="action-btn share-btn" type="button" data-entity='${ej}'><span class="iconify" data-icon="ph:share-network" data-width="14" data-height="14"></span> اشتراک‌گذاری</button></div>`;
+      html+=`</div></div></div>`;
+    }
+    list.innerHTML=html;
+  }
+
+  function updateSearchData(entities){
+    const sd=entities.map(e=>({
+      id:e.id,name:e.name,title:e.title||"",description:e.description||"",avatar_url:e.avatar_url,
+      color:avColor(e.name),initial:getInit(e.name),verification_type:e.verification_type,
+      links:(e.links||[]).map(l=>({url:normalizeUrl(l.url,l.platform),platform:l.platform,...platInfo(l.platform)})),
+      filterValues:(e.entity_filter_values??[]).map(efv=>efv.filter_options?.value??"").filter(Boolean)
+    }));
+    sd.forEach(e=>{e._n=normalizeText(e.name);e._t=normalizeText(e.title);e._d=normalizeText(e.description);e._fv=(e.filterValues||[]).map(fv=>normalizeText(fv));e._lp=(e.links||[]).map(l=>normalizeText(l.label+" "+l.platform));});
+    searchData.length=0;searchData.push(...sd);
+  }
+
+  // کلیک روی چیپ فیلتر
+  document.querySelectorAll(".filter-chip").forEach(chip=>{
+    chip.addEventListener("click",async e=>{
+      e.preventDefault();
+      const slug=chip.dataset.filterSlug,optId=chip.dataset.optionId;
+      const params=new URLSearchParams(location.search);
+      if(optId)params.set(slug,optId);else params.delete(slug);
+      document.querySelectorAll(`.filter-chip[data-filter-slug="${slug}"]`).forEach(c=>c.classList.toggle("active",c.dataset.optionId===optId));
+      const filters={};params.forEach((v,k)=>{filters[k]=v;});
+      await fetchAndRender(filters);
+      const qs=params.toString();const url=qs?`/regions?${qs}`:"/regions";
+      history.pushState(null,"",url);
+      const ac=document.querySelector(".filter-chip.active");if(ac)setTimeout(()=>ac.scrollIntoView({behavior:"smooth",inline:"center",block:"nearest"}),150);
     });
   });
 
-  // Report
-  document.querySelectorAll(".report-btn").forEach(btn=>{
-    btn.addEventListener("click",async()=>{
-      const name=btn.getAttribute("data-name")??"";
-      const url=location.href;
-      try {
-        await fetch(`${SB_URL}/rest/v1/link_suggestions`, {
-          method:"POST",
-          headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`},
-          body:JSON.stringify({target_name:name,target_url:url,notes:"گزارش خرابی لینک"}),
-        });
-        alert(`گزارش خرابی برای «${name}» ثبت شد.`);
-      } catch { alert("خطا در ثبت گزارش. لطفاً دوباره تلاش کنید."); }
-    });
+  // دکمه بازگشت مرورگر
+  window.addEventListener("popstate",()=>{
+    const params=new URLSearchParams(location.search);
+    const filters={};params.forEach((v,k)=>{filters[k]=v;});
+    document.querySelectorAll(".filter-chip").forEach(c=>{const s=c.dataset.filterSlug,o=c.dataset.optionId;c.classList.toggle("active",filters[s]===o||(!filters[s]&&!o));});
+    fetchAndRender(filters);
   });
 </script>

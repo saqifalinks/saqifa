@@ -105,6 +105,7 @@ const stats = [
     </a>
   </div>
   <div class="rn-cats" id="rn-cats">
+    <span class="rn-section-title">دسته‌بندی‌ها</span>
     {otherCategories.map(cat=>(
       <button class="rn-cat-btn" type="button"
         data-cat-id={cat.id} data-cat-name={cat.name} data-cat-slug={cat.slug}>
@@ -804,7 +805,8 @@ html[data-theme="light"] .disclaimer-box {
   .rn-brand-text { display: flex; flex-direction: column; gap: 2px; }
   .rn-brand-name { font-family: 'GraphicSchool', sans-serif; font-size: 22px; font-weight: 400; color: #fff; }
   .rn-brand-subtitle { font-size: 11px; color: color-mix(in srgb,#fff 60%,transparent); font-weight: 600; }
-  .rn-cats { display: flex; flex-direction: column; gap: 6px; padding: 18px 12px; flex: 1; overflow-y: auto; }
+  .rn-cats { display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 18px; flex: 1; overflow-y: auto; }
+  .rn-section-title { font-size: 15px; font-weight: 800; color: color-mix(in srgb,#fff 45%,transparent); padding: 8px 16px 2px; letter-spacing: 0.04em; }
   .rn-cat-btn {
     display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 16px;
     color: color-mix(in srgb,#fff 70%,transparent); font-size: 15px; font-weight: 700;
@@ -1304,11 +1306,12 @@ html[data-theme="light"] .disclaimer-box {
   });
 
   function prepQuery(s) {
-    s=s.replace(/[َُِّْٰٓ]/g,'')
+    s=s.replace(/[ًٌٍَُِّْٰٓ]/g,'')
        .replace(/[يى]/g,'ی').replace(/[ك]/g,'ک')
-       .replace(/[ة]/g,'ه').replace(/[إأٱ]/g,'ا')
+       .replace(/[ةھ]/g,'ه').replace(/[إأٱ]/g,'ا')
        .replace(/[ؤ]/g,'و').replace(/[ئ]/g,'ی')
-       .replace(/[ھ]/g,'ه').replace(/[ے]/g,'ی');
+       .replace(/[ە]/g,'ه').replace(/[ۓ]/g,'ی')
+       .replace(/[ے]/g,'ی');
     const spaced=s.replace(/[\s\u200C\u200D\u00A0]+/g,'%');
     const tight=s.replace(/[\s\u200C\u200D\u00A0]/g,'');
     const p2=tight.length>2?tight.split('').join('%'):null;
@@ -1323,14 +1326,40 @@ html[data-theme="light"] .disclaimer-box {
       const headers={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
       let html="";
       if (msFilter==="all"||msFilter==="entity") {
-        const conds=patterns.flatMap(p=>[`name.ilike.*${encodeURIComponent(p)}*`,`title.ilike.*${encodeURIComponent(p)}*`,`description.ilike.*${encodeURIComponent(p)}*`]).join(',');
-        const res=await fetch(`${SB_URL}/rest/v1/entities?or=(${conds})&select=id,name,title,description,avatar_url,category_id&limit=10`,{headers});
-        const entities=await res.json();
-        if (entities?.length) {
-          if (msFilter==="all") html+=`<p class="ms-section-title">شخصیت‌ها و مراکز</p>`;
-          entities.forEach(e=>{
-            html+=`<button class="ms-entity-card" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><div class="ms-entity-name">${e.name}</div></button><div class="ms-divider"></div>`;
-          });
+        // اول جستجوی فیلترها و مناطق
+        const foConds=patterns.map(p=>`value.ilike.*${encodeURIComponent(p)}*`).join(',');
+        const foRes=await fetch(`${SB_URL}/rest/v1/filter_options?select=id,value&or=(${foConds})&limit=20`,{headers});
+        const foData=await foRes.json();
+        let hasFilterResults=false;
+        if (foData?.length) {
+          const optIds=[...new Set(foData.map(o=>o.id))].join(',');
+          const evRes=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=in.(${optIds})&select=entity_id`,{headers});
+          const evData=await evRes.json();
+          if (evData?.length) {
+            const entityIds=[...new Set(evData.map(v=>v.entity_id).filter(Boolean))].join(',');
+            if (entityIds) {
+              const eRes=await fetch(`${SB_URL}/rest/v1/entities?id=in.(${entityIds})&select=id,name,category_id&limit=10`,{headers});
+              const eData=await eRes.json();
+              if (eData?.length) {
+                hasFilterResults=true;
+                eData.forEach(e=>{
+                  html+=`<button class="ms-entity-card" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><div class="ms-entity-name">${e.name}</div></button><div class="ms-divider"></div>`;
+                });
+              }
+            }
+          }
+        }
+        // اگه فیلتری پیدا نشد، برو سراغ اسم/عنوان
+        if (!hasFilterResults) {
+          const conds=patterns.flatMap(p=>[`name.ilike.*${encodeURIComponent(p)}*`,`title.ilike.*${encodeURIComponent(p)}*`,`description.ilike.*${encodeURIComponent(p)}*`]).join(',');
+          const res=await fetch(`${SB_URL}/rest/v1/entities?or=(${conds})&select=id,name,title,description,avatar_url,category_id&limit=10`,{headers});
+          const entities=await res.json();
+          if (entities?.length) {
+            if (msFilter==="all") html+=`<p class="ms-section-title">شخصیت‌ها و مراکز</p>`;
+            entities.forEach(e=>{
+              html+=`<button class="ms-entity-card" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><div class="ms-entity-name">${e.name}</div></button><div class="ms-divider"></div>`;
+            });
+          }
         }
       }
       if (msFilter==="platform") {
@@ -1414,14 +1443,40 @@ html[data-theme="light"] .disclaimer-box {
       let html="";
 
       if (dsFilter==="all"||dsFilter==="entity") {
-        const conds=patterns.flatMap(p=>[`name.ilike.*${encodeURIComponent(p)}*`,`title.ilike.*${encodeURIComponent(p)}*`,`description.ilike.*${encodeURIComponent(p)}*`]).join(',');
-        const res=await fetch(`${SB_URL}/rest/v1/entities?or=(${conds})&select=id,name,title,description,avatar_url,category_id&limit=10`,{headers});
-        const entities=await res.json();
-        if (entities?.length) {
-          if (dsFilter==="all") html+=`<p class="ds-section-title">شخصیت‌ها و مراکز</p>`;
-          entities.forEach(e=>{
-            html+=`<button class="ds-item" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><span class="ds-item-title">${e.name}</span></button><div class="ds-divider"></div>`;
-          });
+        // اول جستجوی فیلترها و مناطق
+        const foConds=patterns.map(p=>`value.ilike.*${encodeURIComponent(p)}*`).join(',');
+        const foRes=await fetch(`${SB_URL}/rest/v1/filter_options?select=id,value&or=(${foConds})&limit=20`,{headers});
+        const foData=await foRes.json();
+        let hasFilterResults=false;
+        if (foData?.length) {
+          const optIds=[...new Set(foData.map(o=>o.id))].join(',');
+          const evRes=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=in.(${optIds})&select=entity_id`,{headers});
+          const evData=await evRes.json();
+          if (evData?.length) {
+            const entityIds=[...new Set(evData.map(v=>v.entity_id).filter(Boolean))].join(',');
+            if (entityIds) {
+              const eRes=await fetch(`${SB_URL}/rest/v1/entities?id=in.(${entityIds})&select=id,name,category_id&limit=10`,{headers});
+              const eData=await eRes.json();
+              if (eData?.length) {
+                hasFilterResults=true;
+                eData.forEach(e=>{
+                  html+=`<button class="ds-item" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><span class="ds-item-title">${e.name}</span></button><div class="ds-divider"></div>`;
+                });
+              }
+            }
+          }
+        }
+        // اگه فیلتری پیدا نشد، برو سراغ اسم/عنوان
+        if (!hasFilterResults) {
+          const conds=patterns.flatMap(p=>[`name.ilike.*${encodeURIComponent(p)}*`,`title.ilike.*${encodeURIComponent(p)}*`,`description.ilike.*${encodeURIComponent(p)}*`]).join(',');
+          const res=await fetch(`${SB_URL}/rest/v1/entities?or=(${conds})&select=id,name,title,description,avatar_url,category_id&limit=10`,{headers});
+          const entities=await res.json();
+          if (entities?.length) {
+            if (dsFilter==="all") html+=`<p class="ds-section-title">شخصیت‌ها و مراکز</p>`;
+            entities.forEach(e=>{
+              html+=`<button class="ds-item" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><span class="ds-item-title">${e.name}</span></button><div class="ds-divider"></div>`;
+            });
+          }
         }
       }
 

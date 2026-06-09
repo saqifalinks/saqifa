@@ -185,9 +185,9 @@ const searchData = entities.map(e => ({
           <div class="entity-item glass-card" data-id={entity.id} data-search={entity.name.toLowerCase()}>
 
             <button class="entity-row" type="button" aria-expanded="false">
-              <div class="avatar" style={`--av:${color}`}>
+              <div class="avatar" style={`--av:${color};width:50px;height:50px`}>
                 {entity.avatar_url
-                  ? <img src={entity.avatar_url} alt={entity.name} loading="lazy" />
+                  ? <img src={entity.avatar_url} alt={entity.name} width="50" height="50" loading="lazy" />
                   : <span>{initial}</span>}
               </div>
 

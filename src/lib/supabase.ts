@@ -7,7 +7,7 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 2000);
+  const timer = setTimeout(() => ctrl.abort(), 8000);
   const merged = { ...init, signal: ctrl.signal };
   return fetch(input, merged).finally(() => clearTimeout(timer));
 }

@@ -60,23 +60,23 @@ if (isSupabaseConfigured && supabase) {
 
       let entityQuery = supabase
         .from("entities")
-        .select("id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order),entity_filter_values(filter_option_id,filter_options(id,value))")
+        .select("id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order)")
         .eq("category_id", category.id);
 
       const filterKeys = Object.keys(activeFilters);
       if (filterKeys.length > 0) {
         const matchedFilters = filtersList.filter(f => activeFilters[f.slug]);
-        const allFilteredIds: string[][] = [];
-
-        for (const mf of matchedFilters) {
+        const queries = matchedFilters.map(mf => {
           const optId = parseInt(activeFilters[mf.slug]);
-          const { data: evData } = await supabase
+          return supabase
             .from("entity_filter_values")
             .select("entity_id")
             .eq("filter_option_id", optId);
-          const ids = (evData ?? []).map((r: any) => r.entity_id);
-          allFilteredIds.push(ids);
-        }
+        });
+        const results = await Promise.all(queries);
+        const allFilteredIds = results.map(({ data }) =>
+          (data ?? []).map((r: any) => r.entity_id)
+        );
 
         let finalIds: string[] = allFilteredIds[0] ?? [];
         for (let i = 1; i < allFilteredIds.length; i++) {
@@ -86,7 +86,7 @@ if (isSupabaseConfigured && supabase) {
         if (finalIds.length > 0) {
           entityQuery = entityQuery.in("id", finalIds);
         } else {
-          entityQuery = entityQuery.in("id", [0]);
+          entityQuery = entityQuery.limit(0);
         }
       }
 
@@ -320,7 +320,7 @@ const searchData = entities.map(e => ({
   </div>
 </Layout>
 
-<style>
+<style is:global>
   *, *::before, *::after { box-sizing: border-box; }
 
   .page-shell {
@@ -737,12 +737,17 @@ const searchData = entities.map(e => ({
     let entityResults=[];
     let filterResults=[];
     let linkResults=[];
+    function se(e,nq){
+      if(e._n.startsWith(nq)||e._t.startsWith(nq))return 1;
+      const ws=e.name.split(/[\s\u200C\u200D\u00A0]+/);
+      for(const w of ws)if(normalizeText(w).startsWith(nq))return 1;
+      if(e.title){const tw=e.title.split(/[\s\u200C\u200D\u00A0]+/);for(const w of tw)if(normalizeText(w).startsWith(nq))return 1;}
+      return 0;
+    }
     if(activeFilter==="all"||activeFilter==="entity") {
       filterResults=searchData.filter(e=>e._fv.some(fv=>fv.includes(nq)));
       if(!filterResults.length) {
-        entityResults=searchData.filter(e=>
-          e._n.includes(nq)||e._t.includes(nq)||e._d.includes(nq)
-        );
+        entityResults=searchData.filter(e=>se(e,nq));
       }
     }
     if(activeFilter==="platform") {
@@ -883,24 +888,28 @@ const searchData = entities.map(e => ({
   async function fetchAndRender(filters){
     const list=document.getElementById("entity-list");if(!list)return;
     list.innerHTML='<p class="empty-state" style="text-align:center;padding:40px;color:var(--text-dim)">در حال جستجو...</p>';
-    const hdrs={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
-    const slugs=Object.keys(filters);let entityIds=null;
-    if(slugs.length>0){
-      const allIds=[];
-      for(const slug of slugs){
-        const optId=filters[slug];
-        const r=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=eq.${optId}&select=entity_id`,{headers:hdrs});
-        const d=await r.json();
-        if(Array.isArray(d)&&d.length)allIds.push([...new Set(d.map(x=>x.entity_id))]);else allIds.push([]);
+    try{
+      const hdrs={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
+      const slugs=Object.keys(filters);let entityIds=null;
+      if(slugs.length>0){
+        const allIds=[];
+        for(const slug of slugs){
+          const optId=filters[slug];
+          const r=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=eq.${optId}&select=entity_id`,{headers:hdrs});
+          const d=await r.json();
+          if(Array.isArray(d)&&d.length)allIds.push([...new Set(d.map(x=>x.entity_id))]);else allIds.push([]);
+        }
+        entityIds=allIds[0];for(let i=1;i<allIds.length;i++)entityIds=entityIds.filter(id=>allIds[i].includes(id));
+        if(!entityIds.length){list.innerHTML='<p class="empty-state">هنوز موردی ثبت نشده است.</p>';updateSearchData([]);return;}
       }
-      entityIds=allIds[0];for(let i=1;i<allIds.length;i++)entityIds=entityIds.filter(id=>allIds[i].includes(id));
-      if(!entityIds.length){list.innerHTML='<p class="empty-state">هنوز موردی ثبت نشده است.</p>';updateSearchData([]);return;}
+      let url=`${SB_URL}/rest/v1/entities?select=id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order)&category_id=eq.${categoryId}&order=created_at.asc`;
+      if(entityIds)url+=`&id=in.(${entityIds.join(",")})`;
+      const r=await fetch(url,{headers:hdrs});const entities=await r.json();
+      if(!Array.isArray(entities)){list.innerHTML='<p class="empty-state">خطا در دریافت اطلاعات.</p>';return;}
+      renderEntities(entities);updateSearchData(entities);bindSocialScrolls();if(window.Iconify)window.Iconify.scan(list);
+    }catch{
+      list.innerHTML='<p class="empty-state" style="text-align:center;padding:40px;color:var(--text-dim)">خطا در دریافت اطلاعات.</p>';
     }
-    let url=`${SB_URL}/rest/v1/entities?select=id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order),entity_filter_values(filter_option_id,filter_options(id,value))&category_id=eq.${categoryId}&order=created_at.asc`;
-    if(entityIds)url+=`&id=in.(${entityIds.join(",")})`;
-    const r=await fetch(url,{headers:hdrs});const entities=await r.json();
-    if(!Array.isArray(entities)){list.innerHTML='<p class="empty-state">خطا در دریافت اطلاعات.</p>';return;}
-    renderEntities(entities);updateSearchData(entities);bindSocialScrolls();if(window.Iconify)window.Iconify.scan(list);
   }
 
   function renderEntities(entities){

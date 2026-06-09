@@ -733,7 +733,7 @@ html[data-theme="light"] .disclaimer-box {
 .ms-filter.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 :global(.ms-results) { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
-:global(.ms-hint, .ms-no-result) { text-align: center; color: var(--text-dim); font-size: 13px; padding: 32px 16px; margin: 0; }
+:global(.ms-hint), :global(.ms-no-result) { text-align: center; color: var(--text-dim); font-size: 13px; padding: 32px 16px; margin: 0; }
 :global(.ms-section-title) { font-size: 11px; font-weight: 800; color: var(--text-dim); padding: 10px 16px 4px; margin: 0; }
 :global(.ms-divider) { height: 1px; background: var(--border); margin: 0 16px; opacity: 0.4; }
 
@@ -1326,33 +1326,36 @@ html[data-theme="light"] .disclaimer-box {
       const headers={"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
       let html="";
       if (msFilter==="all"||msFilter==="entity") {
-        // اول جستجوی فیلترها و مناطق
-        const foConds=patterns.map(p=>`value.ilike.*${encodeURIComponent(p)}*`).join(',');
-        const foRes=await fetch(`${SB_URL}/rest/v1/filter_options?select=id,value&or=(${foConds})&limit=20`,{headers});
-        const foData=await foRes.json();
+        // اول جستجوی فیلترها و مناطق (فقط برای ≥۳ حرف)
         let hasFilterResults=false;
-        if (foData?.length) {
-          const optIds=[...new Set(foData.map(o=>o.id))].join(',');
-          const evRes=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=in.(${optIds})&select=entity_id`,{headers});
-          const evData=await evRes.json();
-          if (evData?.length) {
-            const entityIds=[...new Set(evData.map(v=>v.entity_id).filter(Boolean))].join(',');
-            if (entityIds) {
-              const eRes=await fetch(`${SB_URL}/rest/v1/entities?id=in.(${entityIds})&select=id,name,category_id&limit=10`,{headers});
-              const eData=await eRes.json();
-              if (eData?.length) {
-                hasFilterResults=true;
-                eData.forEach(e=>{
-                  html+=`<button class="ms-entity-card" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><div class="ms-entity-name">${e.name}</div></button><div class="ms-divider"></div>`;
-                });
+        if (patterns[0].length>=3) {
+          const foConds=`value.ilike.*${encodeURIComponent(patterns[0])}*`;
+          const foRes=await fetch(`${SB_URL}/rest/v1/filter_options?select=id,value&or=(${foConds})&limit=20`,{headers});
+          const foData=await foRes.json();
+          if (foData?.length) {
+            const optIds=[...new Set(foData.map(o=>o.id))].join(',');
+            const evRes=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=in.(${optIds})&select=entity_id`,{headers});
+            const evData=await evRes.json();
+            if (evData?.length) {
+              const entityIds=[...new Set(evData.map(v=>v.entity_id).filter(Boolean))].join(',');
+              if (entityIds) {
+                const eRes=await fetch(`${SB_URL}/rest/v1/entities?id=in.(${entityIds})&select=id,name,category_id&limit=10`,{headers});
+                const eData=await eRes.json();
+                if (eData?.length) {
+                  hasFilterResults=true;
+                  eData.forEach(e=>{
+                    html+=`<button class="ms-entity-card" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><div class="ms-entity-name">${e.name}</div></button><div class="ms-divider"></div>`;
+                  });
+                }
               }
             }
           }
         }
         // اگه فیلتری پیدا نشد، برو سراغ اسم/عنوان
         if (!hasFilterResults) {
-          const conds=patterns.flatMap(p=>[`name.ilike.*${encodeURIComponent(p)}*`,`title.ilike.*${encodeURIComponent(p)}*`,`description.ilike.*${encodeURIComponent(p)}*`]).join(',');
-          const res=await fetch(`${SB_URL}/rest/v1/entities?or=(${conds})&select=id,name,title,description,avatar_url,category_id&limit=10`,{headers});
+          const p0=encodeURIComponent(patterns[0]);
+          const conds=`name.ilike.${p0}*,name.ilike.*%20${p0}*,title.ilike.${p0}*,title.ilike.*%20${p0}*`;
+          const res=await fetch(`${SB_URL}/rest/v1/entities?or=(${conds})&select=id,name,title,category_id&limit=10`,{headers});
           const entities=await res.json();
           if (entities?.length) {
             if (msFilter==="all") html+=`<p class="ms-section-title">شخصیت‌ها و مراکز</p>`;
@@ -1443,33 +1446,36 @@ html[data-theme="light"] .disclaimer-box {
       let html="";
 
       if (dsFilter==="all"||dsFilter==="entity") {
-        // اول جستجوی فیلترها و مناطق
-        const foConds=patterns.map(p=>`value.ilike.*${encodeURIComponent(p)}*`).join(',');
-        const foRes=await fetch(`${SB_URL}/rest/v1/filter_options?select=id,value&or=(${foConds})&limit=20`,{headers});
-        const foData=await foRes.json();
+        // اول جستجوی فیلترها و مناطق (فقط برای ≥۳ حرف)
         let hasFilterResults=false;
-        if (foData?.length) {
-          const optIds=[...new Set(foData.map(o=>o.id))].join(',');
-          const evRes=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=in.(${optIds})&select=entity_id`,{headers});
-          const evData=await evRes.json();
-          if (evData?.length) {
-            const entityIds=[...new Set(evData.map(v=>v.entity_id).filter(Boolean))].join(',');
-            if (entityIds) {
-              const eRes=await fetch(`${SB_URL}/rest/v1/entities?id=in.(${entityIds})&select=id,name,category_id&limit=10`,{headers});
-              const eData=await eRes.json();
-              if (eData?.length) {
-                hasFilterResults=true;
-                eData.forEach(e=>{
-                  html+=`<button class="ds-item" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><span class="ds-item-title">${e.name}</span></button><div class="ds-divider"></div>`;
-                });
+        if (patterns[0].length>=3) {
+          const foConds=`value.ilike.*${encodeURIComponent(patterns[0])}*`;
+          const foRes=await fetch(`${SB_URL}/rest/v1/filter_options?select=id,value&or=(${foConds})&limit=20`,{headers});
+          const foData=await foRes.json();
+          if (foData?.length) {
+            const optIds=[...new Set(foData.map(o=>o.id))].join(',');
+            const evRes=await fetch(`${SB_URL}/rest/v1/entity_filter_values?filter_option_id=in.(${optIds})&select=entity_id`,{headers});
+            const evData=await evRes.json();
+            if (evData?.length) {
+              const entityIds=[...new Set(evData.map(v=>v.entity_id).filter(Boolean))].join(',');
+              if (entityIds) {
+                const eRes=await fetch(`${SB_URL}/rest/v1/entities?id=in.(${entityIds})&select=id,name,category_id&limit=10`,{headers});
+                const eData=await eRes.json();
+                if (eData?.length) {
+                  hasFilterResults=true;
+                  eData.forEach(e=>{
+                    html+=`<button class="ds-item" type="button" data-cat-id="${e.category_id}" data-entity-id="${e.id}"><span class="ds-item-title">${e.name}</span></button><div class="ds-divider"></div>`;
+                  });
+                }
               }
             }
           }
         }
         // اگه فیلتری پیدا نشد، برو سراغ اسم/عنوان
         if (!hasFilterResults) {
-          const conds=patterns.flatMap(p=>[`name.ilike.*${encodeURIComponent(p)}*`,`title.ilike.*${encodeURIComponent(p)}*`,`description.ilike.*${encodeURIComponent(p)}*`]).join(',');
-          const res=await fetch(`${SB_URL}/rest/v1/entities?or=(${conds})&select=id,name,title,description,avatar_url,category_id&limit=10`,{headers});
+          const p0=encodeURIComponent(patterns[0]);
+          const conds=`name.ilike.${p0}*,name.ilike.*%20${p0}*,title.ilike.${p0}*,title.ilike.*%20${p0}*`;
+          const res=await fetch(`${SB_URL}/rest/v1/entities?or=(${conds})&select=id,name,title,category_id&limit=10`,{headers});
           const entities=await res.json();
           if (entities?.length) {
             if (dsFilter==="all") html+=`<p class="ds-section-title">شخصیت‌ها و مراکز</p>`;

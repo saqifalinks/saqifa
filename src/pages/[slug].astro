@@ -17,6 +17,7 @@ type CatFilter = { id: number; name: string; slug: string; options: FilterOpt[];
 
 let category: Category | null = null;
 let entities: Entity[] = [];
+let allEntities: Entity[] = [];
 let allCategories: Category[] = [];
 let filtersList: CatFilter[] = [];
 let activeFilters: Record<string, string> = {};
@@ -61,52 +62,51 @@ if (isSupabaseConfigured && supabase) {
         if (val) activeFilters[f.slug] = val;
       }
 
-      // ساخت کوئری entities با اعمال فیلتر
-      let entityQuery = supabase
+      // دریافت همه entityهای این دسته
+      const { data: rawEntities, error: entitiesError } = await supabase
         .from("entities")
         .select("id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order)")
-        .eq("category_id", category.id);
-
-      // اگر فیلتری انتخاب شده، entityIdها رو محدود کن
-      const filterKeys = Object.keys(activeFilters);
-      if (filterKeys.length > 0) {
-        const matchedFilters = filtersList.filter(f => activeFilters[f.slug]);
-        const queries = matchedFilters.map(mf => {
-          const optId = parseInt(activeFilters[mf.slug]);
-          return supabase
-            .from("entity_filter_values")
-            .select("entity_id")
-            .eq("filter_option_id", optId);
-        });
-        const results = await Promise.all(queries);
-        const allFilteredIds = results.map(({ data }) =>
-          (data ?? []).map((r: any) => r.entity_id)
-        );
-
-        // اشتراک بین فیلترها (AND)
-        let finalIds: string[] = allFilteredIds[0] ?? [];
-        for (let i = 1; i < allFilteredIds.length; i++) {
-          finalIds = finalIds.filter(id => allFilteredIds[i].includes(id));
-        }
-
-        if (finalIds.length > 0) {
-          entityQuery = entityQuery.in("id", finalIds);
-        } else {
-          entityQuery = entityQuery.limit(0); // هیچ نتیجه‌ای
-        }
-      }
-
-      entityQuery = entityQuery.order("created_at", { ascending: true });
-
-      const { data: entitiesData, error: entitiesError } = await entityQuery;
+        .eq("category_id", category.id)
+        .order("created_at", { ascending: true });
 
       if (entitiesError) {
         pageError = "خطا در دریافت اطلاعات.";
       } else {
-        entities = (entitiesData ?? []).map((e: any) => ({
+        const sorted = (rawEntities ?? []).map((e: any) => ({
           ...e,
           links: (e.links ?? []).sort((a: Link, b: Link) => a.display_order - b.display_order),
         }));
+        allEntities = sorted;
+        // فیلتر کردن برای نمایش (اگر فیلتری فعال باشه)
+        const filterKeys = Object.keys(activeFilters);
+        if (filterKeys.length > 0) {
+          const matchedFilters = filtersList.filter(f => activeFilters[f.slug]);
+          const queries = matchedFilters.map(mf => {
+            const optId = parseInt(activeFilters[mf.slug]);
+            return supabase
+              .from("entity_filter_values")
+              .select("entity_id")
+              .eq("filter_option_id", optId);
+          });
+          const results = await Promise.all(queries);
+          const allFilteredIds = results.map(({ data }) =>
+            (data ?? []).map((r: any) => r.entity_id)
+          );
+
+          // اشتراک بین فیلترها (AND)
+          let finalIds: string[] = allFilteredIds[0] ?? [];
+          for (let i = 1; i < allFilteredIds.length; i++) {
+            finalIds = finalIds.filter(id => allFilteredIds[i].includes(id));
+          }
+          if (finalIds.length > 0) {
+            const idSet = new Set(finalIds);
+            entities = sorted.filter(e => idSet.has(e.id));
+          } else {
+            entities = [];
+          }
+        } else {
+          entities = sorted;
+        }
       }
     }
   } catch {
@@ -122,7 +122,7 @@ function getAvatarColor(name: string) {
 }
 function getInitial(name: string) { return name?.trim()?.[0] ?? "؟"; }
 
-const searchData = entities.map(e => ({
+const searchData = allEntities.map(e => ({
   id: e.id,
   name: e.name,
   title: e.title ?? "",
@@ -1267,13 +1267,13 @@ const searchData = entities.map(e => ({
           if(Array.isArray(d)&&d.length)allIds.push([...new Set(d.map(x=>x.entity_id))]);else allIds.push([]);
         }
         entityIds=allIds[0];for(let i=1;i<allIds.length;i++)entityIds=entityIds.filter(id=>allIds[i].includes(id));
-        if(!entityIds.length){list.innerHTML='<p class="empty-state">هنوز موردی ثبت نشده است.</p>';updateSearchData([]);return;}
+        if(!entityIds.length){list.innerHTML='<p class="empty-state">هنوز موردی ثبت نشده است.</p>';return;}
       }
       let url=`${SB_URL}/rest/v1/entities?select=id,name,title,description,avatar_url,verification_type,links(id,platform,url,display_order)&category_id=eq.${categoryId}&order=created_at.asc`;
       if(entityIds)url+=`&id=in.(${entityIds.join(",")})`;
       const r=await fetch(url,{headers:hdrs});const entities=await r.json();
       if(!Array.isArray(entities)){list.innerHTML='<p class="empty-state">خطا در دریافت اطلاعات.</p>';return;}
-      renderEntities(entities);updateSearchData(entities);bindSocialScrolls();if(window.Iconify)window.Iconify.scan(list);
+      renderEntities(entities);bindSocialScrolls();if(window.Iconify)window.Iconify.scan(list);
     }catch{
       list.innerHTML='<p class="empty-state" style="text-align:center;padding:40px;color:var(--text-dim)">خطا در دریافت اطلاعات.</p>';
     }

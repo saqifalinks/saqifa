@@ -281,7 +281,7 @@ const searchData = allEntities.map(e => ({
     <div class="edge-backdrop" id="edge-backdrop"></div>
     <div class="edge-panel" id="edge-panel">
       <div class="edge-tab" id="edge-tab">
-        <span class="iconify" data-icon="ph:squares-four" data-width="14" data-height="14"></span>
+        <span class="edge-tab-text">دسته‌ها</span>
       </div>
       <div class="edge-cats" id="edge-cats">
         <button class="edge-arrow" id="edge-up" type="button">
@@ -675,7 +675,7 @@ const searchData = allEntities.map(e => ({
 
   .edge-tab {
     width: 28px;
-    height: 60px;
+    height: 110px;
     background: var(--primary);
     border-radius: 0 14px 14px 0;
     display: flex;
@@ -685,6 +685,13 @@ const searchData = allEntities.map(e => ({
     cursor: pointer;
     flex-shrink: 0;
     box-shadow: 3px 0 14px color-mix(in srgb,var(--primary) 45%,transparent);
+  }
+  .edge-tab-text {
+    writing-mode: vertical-rl; font-size: 12px; font-weight: 700;
+    user-select: none;
+  }
+  @media (min-width: 769px) {
+    .edge-panel, .edge-backdrop { display: none !important; }
   }
 
   .edge-cats {

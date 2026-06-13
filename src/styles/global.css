@@ -45,6 +45,12 @@ a {
   text-decoration: none;
 }
 
+.glass-card {
+  background: color-mix(in srgb,var(--surface) 78%,transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border); border-radius: 18px; overflow: hidden;
+}
+
 button,
 input {
   font: inherit;
@@ -61,3 +67,10 @@ input {
   padding-left: 20px;
   padding-right: 20px;
 }
+
+/* Scrollbar */
+html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }

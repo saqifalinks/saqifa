@@ -305,11 +305,12 @@ const searchData = allEntities.map(e => ({
     <!-- Bottom Sheet جستجو -->
     <div class="bs-backdrop" id="bs-backdrop"></div>
     <div class="bottom-sheet" id="bottom-sheet">
-      <div class="bs-inner">
-      <button class="bs-close-btn" id="bs-close-btn" type="button">
-        <span class="iconify" data-icon="ph:x" data-width="18" data-height="18"></span>
-      </button>
-      <div class="bs-handle"></div>
+      <div class="bs-top-bar">
+        <button class="bs-close-btn" id="bs-close-btn" type="button">
+          <span class="iconify" data-icon="ph:x" data-width="18" data-height="18"></span>
+        </button>
+        <div class="bs-handle"></div>
+      </div>
       <div class="bs-search-row">
         <span class="iconify" data-icon="ph:magnifying-glass" data-width="16" data-height="16" style="color:var(--text-dim)"></span>
         <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" />
@@ -325,7 +326,6 @@ const searchData = allEntities.map(e => ({
       <div class="bs-results" id="bs-results">
         <p class="bs-hint">برای جستجو تایپ کن...</p>
       </div>
-    </div>
     </div>
 
   </div>
@@ -790,16 +790,15 @@ const searchData = allEntities.map(e => ({
   }
   .bottom-sheet.open { transform: translateX(-50%) translateY(0); }
 
-  .bs-inner { position: relative; display: flex; flex-direction: column; flex: 1; height: 100%; }
-
-  .bs-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 12px auto 10px; flex-shrink: 0; }
+  .bs-top-bar { display: flex; align-items: center; padding: 12px 16px 0; flex-shrink: 0; }
+  .bs-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 0 auto; flex-shrink: 0; }
 
   .bs-close-btn {
-    position: absolute; top: 12px; left: 12px; z-index: 1;
     width: 32px; height: 32px; border-radius: 50%;
     background: color-mix(in srgb,var(--text-dim) 10%,transparent);
     border: none; color: var(--text-dim); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
   }
 
   .bs-search-row {
@@ -975,6 +974,14 @@ const searchData = allEntities.map(e => ({
       const s = document.querySelector(`.filter-options[data-fscroll="${fslug}"]`);
       if (s) s.scrollBy({ left: dir === "right" ? 120 : -120, behavior: "smooth" });
     });
+  });
+
+  // اسکرول افقی فیلتر با چرخ موس
+  document.querySelectorAll(".filter-options").forEach(el=>{
+    el.addEventListener("wheel",e=>{
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    },{passive:false});
   });
 
   // اسکرول به چیپ فعال

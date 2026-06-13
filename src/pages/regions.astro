@@ -698,10 +698,8 @@ const searchData = allEntities.map(e => ({
   // اسکرول افقی فیلتر با چرخ موس
   document.querySelectorAll(".filter-options").forEach(el=>{
     el.addEventListener("wheel",e=>{
-      if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){
-        e.preventDefault();
-        el.scrollLeft+=e.deltaY;
-      }
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
     },{passive:false});
   });
   document.getElementById("edge-up")?.addEventListener("click",()=>{

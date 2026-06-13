@@ -975,8 +975,9 @@ const searchData = allEntities.map(e => ({
   const edgeUp = document.getElementById("edge-up");
   const edgeDown = document.getElementById("edge-down");
 
-  function openEdge()  { edgePanel?.classList.add("open"); edgeBackdrop?.classList.add("open"); updateEdgeArrows(); }
-  function closeEdge() { edgePanel?.classList.remove("open"); edgeBackdrop?.classList.remove("open"); }
+  function lockBody(lock){document.documentElement.style.overflow=lock?"hidden":""}
+  function openEdge()  { edgePanel?.classList.add("open"); edgeBackdrop?.classList.add("open"); updateEdgeArrows(); lockBody(true); }
+  function closeEdge() { edgePanel?.classList.remove("open"); edgeBackdrop?.classList.remove("open"); lockBody(false); }
 
   document.getElementById("edge-tab")?.addEventListener("click", () =>
     edgePanel?.classList.contains("open") ? closeEdge() : openEdge()

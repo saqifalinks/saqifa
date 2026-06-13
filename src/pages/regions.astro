@@ -274,9 +274,6 @@ const searchData = allEntities.map(e => ({
     <!-- Edge Menu -->
     <div class="edge-backdrop" id="edge-backdrop"></div>
     <div class="edge-panel" id="edge-panel">
-      <div class="edge-tab" id="edge-tab">
-        <span class="iconify" data-icon="ph:squares-four" data-width="14" data-height="14"></span>
-      </div>
       <div class="edge-cats" id="edge-cats">
         <button class="edge-arrow" id="edge-up" type="button">
           <span class="iconify" data-icon="ph:caret-up" data-width="12" data-height="12"></span>
@@ -293,6 +290,9 @@ const searchData = allEntities.map(e => ({
         <button class="edge-arrow" id="edge-down" type="button">
           <span class="iconify" data-icon="ph:caret-down" data-width="12" data-height="12"></span>
         </button>
+      </div>
+      <div class="edge-tab" id="edge-tab">
+        <span class="iconify" data-icon="ph:squares-four" data-width="14" data-height="14"></span>
       </div>
     </div>
 
@@ -471,37 +471,56 @@ const searchData = allEntities.map(e => ({
 
   /* Edge Menu */
   .edge-backdrop {
-    position: fixed; inset: 0; z-index: 90; background: color-mix(in srgb,#000 30%,transparent);
-    display: none;
+    position: fixed; inset: 0; z-index: 100;
+    background: color-mix(in srgb,#000 30%,transparent);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
   }
-  .edge-backdrop.open { display: block; }
+  .edge-backdrop.open { opacity: 1; pointer-events: auto; }
   .edge-panel {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 91;
-    background: var(--bg); border-radius: 24px 24px 0 0;
-    max-height: 60vh; display: flex; flex-direction: column;
-    transform: translateY(100%); transition: transform 0.3s;
-    box-shadow: 0 -4px 30px rgba(0,0,0,0.15);
+    position: fixed; top: 50%; right: 0; z-index: 101;
+    display: flex; align-items: center;
+    transform: translateY(-50%) translateX(calc(100% - 28px));
+    transition: transform 0.3s cubic-bezier(0.34,1.4,0.64,1);
   }
-  .edge-panel.open { transform: translateY(0); }
+  .edge-panel.open { transform: translateY(-50%) translateX(0); }
   .edge-tab {
-    display: flex; align-items: center; justify-content: center;
-    padding: 12px; cursor: pointer; color: var(--text-dim); flex-shrink: 0;
+    width: 28px; height: 60px; background: var(--primary);
+    border-radius: 14px 0 0 14px; display: flex; align-items: center;
+    justify-content: center; color: #fff; cursor: pointer;
+    flex-shrink: 0; box-shadow: -3px 0 14px color-mix(in srgb,var(--primary) 45%,transparent);
   }
-  .edge-cats { display: flex; align-items: center; gap: 4px; padding: 0 8px 16px; flex-shrink: 0; }
-  .edge-arrow {
-    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
-    background: var(--surface); cursor: pointer; display: flex;
-    align-items: center; justify-content: center; color: var(--text-dim); flex-shrink: 0;
+  .edge-cats {
+    background: color-mix(in srgb,var(--surface) 90%,transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-right: none;
+    border-radius: 0 16px 16px 0; padding: 4px 6px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 2px; max-height: 65vh; min-width: 64px;
+    box-shadow: -4px 0 20px color-mix(in srgb,#000 15%,transparent);
   }
-  .edge-scroll { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; }
+  .edge-scroll {
+    display: flex; flex-direction: column; gap: 4px;
+    overflow-y: auto; scroll-behavior: smooth;
+    scrollbar-width: none; flex: 1;
+  }
   .edge-scroll::-webkit-scrollbar { display: none; }
-  .edge-cat {
-    white-space: nowrap; padding: 8px 14px; border-radius: 20px; font-size: 13px;
-    font-weight: 700; text-decoration: none; color: var(--text-main); flex-shrink: 0;
-    background: color-mix(in srgb,var(--surface) 80%,transparent);
-    border: 1px solid var(--border); transition: 0.15s;
+  .edge-arrow {
+    width: 32px; height: 20px; display: flex; align-items: center;
+    justify-content: center; background: none; border: none;
+    color: var(--text-dim); cursor: pointer; border-radius: 6px;
+    flex-shrink: 0; transition: color 0.15s, opacity 0.2s;
   }
-  .edge-cat--active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .edge-arrow:hover { color: var(--primary); }
+  .edge-arrow.hidden { opacity: 0; pointer-events: none; }
+  .edge-cat {
+    display: flex; align-items: center; padding: 6px 12px;
+    border-radius: 10px; text-decoration: none; color: var(--text-dim);
+    transition: background 0.15s, color 0.15s; flex-shrink: 0;
+    font-size: 12px; font-weight: 800; white-space: nowrap;
+  }
+  .edge-cat:hover { background: color-mix(in srgb,var(--primary) 10%,transparent); color: var(--primary); }
+  .edge-cat--active { color: var(--primary); background: color-mix(in srgb,var(--primary) 14%,transparent); }
 
   /* Bottom Sheet */
   .bs-backdrop {
@@ -657,20 +676,23 @@ const searchData = allEntities.map(e => ({
   const edgeTab=document.getElementById("edge-tab");
   const edgeBackdrop=document.getElementById("edge-backdrop");
   const edgePanel=document.getElementById("edge-panel");
+  function lockBody(lock){document.documentElement.style.overflow=lock?"hidden":""}
   if(edgeTab&&edgeBackdrop&&edgePanel){
     edgeTab.addEventListener("click",()=>{
       const o=edgePanel.classList.contains("open");
       edgePanel.classList.toggle("open"); edgeBackdrop.classList.toggle("open");
+      lockBody(!o);
     });
     edgeBackdrop.addEventListener("click",()=>{
       edgePanel.classList.remove("open"); edgeBackdrop.classList.remove("open");
+      lockBody(false);
     });
   }
   document.getElementById("edge-up")?.addEventListener("click",()=>{
-    document.getElementById("edge-scroll")?.scrollBy({left:-200,behavior:"smooth"});
+    document.getElementById("edge-scroll")?.scrollBy({top:-120,behavior:"smooth"});
   });
   document.getElementById("edge-down")?.addEventListener("click",()=>{
-    document.getElementById("edge-scroll")?.scrollBy({left:200,behavior:"smooth"});
+    document.getElementById("edge-scroll")?.scrollBy({top:120,behavior:"smooth"});
   });
 
   // نرمالایز کاراکتر برای جستجوی چندزبانه

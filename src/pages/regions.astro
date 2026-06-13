@@ -332,8 +332,14 @@ const searchData = allEntities.map(e => ({
     display: flex; flex-direction: column;
     position: relative; isolation: isolate;
     padding-bottom: 72px;
+    max-height: 100dvh; overflow: hidden auto;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
     border-radius: 18px;
   }
+  .page-shell::-webkit-scrollbar { width: 6px; }
+  .page-shell::-webkit-scrollbar-track { background: transparent; }
+  .page-shell::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   /* ——— هدر ——— */
   .page-header {
@@ -385,7 +391,7 @@ const searchData = allEntities.map(e => ({
   .filter-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
   /* لیست */
-  .entity-list { padding: 12px 16px 80px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .entity-list { padding: 12px 16px 80px; display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
 
   .entity-item { border-radius: 18px; overflow: hidden; scroll-margin-top: 140px; }
   .entity-row {

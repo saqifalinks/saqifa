@@ -305,6 +305,7 @@ const searchData = allEntities.map(e => ({
     <!-- Bottom Sheet جستجو -->
     <div class="bs-backdrop" id="bs-backdrop"></div>
     <div class="bottom-sheet" id="bottom-sheet">
+      <div class="bs-inner">
       <button class="bs-close-btn" id="bs-close-btn" type="button">
         <span class="iconify" data-icon="ph:x" data-width="18" data-height="18"></span>
       </button>
@@ -324,6 +325,7 @@ const searchData = allEntities.map(e => ({
       <div class="bs-results" id="bs-results">
         <p class="bs-hint">برای جستجو تایپ کن...</p>
       </div>
+    </div>
     </div>
 
   </div>
@@ -788,6 +790,8 @@ const searchData = allEntities.map(e => ({
   }
   .bottom-sheet.open { transform: translateX(-50%) translateY(0); }
 
+  .bs-inner { position: relative; display: flex; flex-direction: column; flex: 1; height: 100%; }
+
   .bs-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 12px auto 10px; flex-shrink: 0; }
 
   .bs-close-btn {
@@ -982,6 +986,8 @@ const searchData = allEntities.map(e => ({
   // Edge Menu
   const edgePanel = document.getElementById("edge-panel");
   const edgeBackdrop = document.getElementById("edge-backdrop");
+  // انتقال به body برای جلوگیری از تداخل ancestor
+  [edgeBackdrop,edgePanel].forEach(el=>{if(el)document.body.appendChild(el);});
   const edgeScroll = document.getElementById("edge-scroll");
   const edgeUp = document.getElementById("edge-up");
   const edgeDown = document.getElementById("edge-down");

@@ -680,6 +680,8 @@ const searchData = allEntities.map(e => ({
   const edgeTab=document.getElementById("edge-tab");
   const edgeBackdrop=document.getElementById("edge-backdrop");
   const edgePanel=document.getElementById("edge-panel");
+  // انتقال به body برای جلوگیری از تداخل ancestor
+  [edgeBackdrop,edgePanel].forEach(el=>{if(el)document.body.appendChild(el);});
   function lockBody(lock){document.documentElement.style.overflow=lock?"hidden":""}
   if(edgeTab&&edgeBackdrop&&edgePanel){
     edgeTab.addEventListener("click",()=>{
@@ -692,6 +694,16 @@ const searchData = allEntities.map(e => ({
       lockBody(false);
     });
   }
+
+  // اسکرول افقی فیلتر با چرخ موس
+  document.querySelectorAll(".filter-options").forEach(el=>{
+    el.addEventListener("wheel",e=>{
+      if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){
+        e.preventDefault();
+        el.scrollLeft+=e.deltaY;
+      }
+    },{passive:false});
+  });
   document.getElementById("edge-up")?.addEventListener("click",()=>{
     document.getElementById("edge-scroll")?.scrollBy({top:-120,behavior:"smooth"});
   });

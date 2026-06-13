@@ -133,7 +133,8 @@ const searchData = allEntities.map(e => ({
 <Layout title={category ? `${category.name} — سَقِیفَه` : "سَقِیفَه"}>
   <div class="page-shell">
 
-    <!-- هدر -->
+    <!-- هدر و فیلترهای شناور -->
+    <div class="sticky-header">
     <header class="page-header">
       <h1 class="page-title">{category?.name ?? "مناطق"}</h1>
     </header>
@@ -172,6 +173,7 @@ const searchData = allEntities.map(e => ({
         ))}
       </div>
     )}
+    </div>
 
     <!-- لیست -->
     <main class="entity-list" id="entity-list">
@@ -334,15 +336,17 @@ const searchData = allEntities.map(e => ({
     padding-bottom: 72px;
   }
 
+  .sticky-header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--bg);
+  }
+
   /* ——— هدر ——— */
   .page-header {
     padding: 28px 20px 18px;
     background: color-mix(in srgb, var(--surface) 85%, transparent);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 20;
   }
   .page-title {
     font-size: 24px;
@@ -354,7 +358,7 @@ const searchData = allEntities.map(e => ({
   }
 
   /* فیلتر */
-  .filter-bar  { padding: 12px 16px 10px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .filter-bar  { padding: 12px 16px 10px; display: flex; flex-wrap: wrap; gap: 10px; background: color-mix(in srgb, var(--surface) 85%, transparent); backdrop-filter: blur(12px); }
   .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
   .filter-label { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-left: 4px; }
   .fscroll-wrap { position: relative; display: flex; align-items: center; min-width: 0; width: 100%; }
@@ -388,7 +392,7 @@ const searchData = allEntities.map(e => ({
   /* لیست */
   .entity-list { padding: 12px 16px 80px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
 
-  .entity-item { border-radius: 18px; overflow: hidden; }
+  .entity-item { border-radius: 18px; overflow: hidden; scroll-margin-top: 140px; }
   .entity-row {
     display: flex; align-items: center; gap: 10px; width: 100%;
     padding: 12px 16px; border: none; background: none; cursor: pointer;

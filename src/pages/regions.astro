@@ -254,73 +254,73 @@ const searchData = allEntities.map(e => ({
         );
       })}
     </main>
-
-    <!-- منوی پایین -->
-    <nav class="bottom-nav">
-      <a href="/" class="nav-item">
-        <span class="iconify" data-icon="ph:house" data-width="22" data-height="22"></span>
-        <span>خانه</span>
-      </a>
-      <button class="nav-item" id="nav-search" type="button">
-        <span class="iconify" data-icon="ph:magnifying-glass" data-width="22" data-height="22"></span>
-        <span>جستجو</span>
-      </button>
-      <button class="nav-item" id="nav-theme" type="button">
-        <span class="iconify" data-icon="ph:sun-bold" data-width="22" data-height="22"></span>
-        <span>تم</span>
-      </button>
-    </nav>
-
-    <!-- Edge Menu -->
-    <div class="edge-backdrop" id="edge-backdrop"></div>
-    <div class="edge-panel" id="edge-panel" style="position:fixed;top:50%;right:0">
-      <div class="edge-tab" id="edge-tab">
-        <span class="edge-tab-text">دسته‌ها</span>
-      </div>
-      <div class="edge-cats" id="edge-cats">
-        <button class="edge-arrow" id="edge-up" type="button">
-          <span class="iconify" data-icon="ph:caret-up" data-width="12" data-height="12"></span>
-        </button>
-        <div class="edge-scroll" id="edge-scroll">
-          {allCategories.map((cat) => (
-            <a href={`/${cat.slug}`}
-              class={`edge-cat${cat.slug === "Regions" ? " edge-cat--active" : ""}`}
-              data-slug={cat.slug} data-name={cat.name}>
-              <span class="edge-label">{cat.name}</span>
-            </a>
-          ))}
-        </div>
-        <button class="edge-arrow" id="edge-down" type="button">
-          <span class="iconify" data-icon="ph:caret-down" data-width="12" data-height="12"></span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Bottom Sheet جستجو -->
-    <div class="bs-backdrop" id="bs-backdrop"></div>
-    <div class="bottom-sheet" id="bottom-sheet">
-      <button class="bs-close-btn" id="bs-close-btn" type="button">
-        <span class="iconify" data-icon="ph:x" data-width="18" data-height="18"></span>
-      </button>
-      <div class="bs-handle"></div>
-      <div class="bs-search-row">
-        <span class="iconify" data-icon="ph:magnifying-glass" data-width="16" data-height="16" style="color:var(--text-dim)"></span>
-        <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" />
-        <button id="bs-clear" class="bs-clear-btn" type="button" style="display:none">
-          <span class="iconify" data-icon="ph:x" data-width="14" data-height="14"></span>
-        </button>
-      </div>
-      <div class="bs-filters">
-        <button class="bs-filter active" data-filter="all" type="button">همه</button>
-        <button class="bs-filter" data-filter="entity" type="button">اشخاص</button>
-        <button class="bs-filter" data-filter="platform" type="button">پلتفرم</button>
-      </div>
-      <div class="bs-results" id="bs-results">
-        <p class="bs-hint">برای جستجو تایپ کن...</p>
-      </div>
-    </div>
-
   </div>
+
+  <!-- منوی پایین -->
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item">
+      <span class="iconify" data-icon="ph:house" data-width="22" data-height="22"></span>
+      <span>خانه</span>
+    </a>
+    <button class="nav-item" id="nav-search" type="button">
+      <span class="iconify" data-icon="ph:magnifying-glass" data-width="22" data-height="22"></span>
+      <span>جستجو</span>
+    </button>
+    <button class="nav-item" id="nav-theme" type="button">
+      <span class="iconify" data-icon="ph:sun-bold" data-width="22" data-height="22"></span>
+      <span>تم</span>
+    </button>
+  </nav>
+
+  <!-- Edge Menu -->
+  <div class="edge-backdrop" id="edge-backdrop"></div>
+  <div class="edge-panel" id="edge-panel" style="position:fixed;top:50%;right:0">
+    <div class="edge-tab" id="edge-tab">
+      <span class="edge-tab-text">دسته‌ها</span>
+    </div>
+    <div class="edge-cats" id="edge-cats">
+      <button class="edge-arrow" id="edge-up" type="button">
+        <span class="iconify" data-icon="ph:caret-up" data-width="12" data-height="12"></span>
+      </button>
+      <div class="edge-scroll" id="edge-scroll">
+        {allCategories.map((cat) => (
+          <a href={`/${cat.slug}`}
+            class={`edge-cat${cat.slug === "Regions" ? " edge-cat--active" : ""}`}
+            data-slug={cat.slug} data-name={cat.name}>
+            <span class="edge-label">{cat.name}</span>
+          </a>
+        ))}
+      </div>
+      <button class="edge-arrow" id="edge-down" type="button">
+        <span class="iconify" data-icon="ph:caret-down" data-width="12" data-height="12"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom Sheet جستجو -->
+  <div class="bs-backdrop" id="bs-backdrop"></div>
+  <div class="bottom-sheet" id="bottom-sheet">
+    <button class="bs-close-btn" id="bs-close-btn" type="button">
+      <span class="iconify" data-icon="ph:x" data-width="18" data-height="18"></span>
+    </button>
+    <div class="bs-handle"></div>
+    <div class="bs-search-row">
+      <span class="iconify" data-icon="ph:magnifying-glass" data-width="16" data-height="16" style="color:var(--text-dim)"></span>
+      <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" />
+      <button id="bs-clear" class="bs-clear-btn" type="button" style="display:none">
+        <span class="iconify" data-icon="ph:x" data-width="14" data-height="14"></span>
+      </button>
+    </div>
+    <div class="bs-filters">
+      <button class="bs-filter active" data-filter="all" type="button">همه</button>
+      <button class="bs-filter" data-filter="entity" type="button">اشخاص</button>
+      <button class="bs-filter" data-filter="platform" type="button">پلتفرم</button>
+    </div>
+    <div class="bs-results" id="bs-results">
+      <p class="bs-hint">برای جستجو تایپ کن...</p>
+    </div>
+  </div>
+
 </Layout>
 
 <style is:global>
@@ -335,8 +335,6 @@ const searchData = allEntities.map(e => ({
     max-height: 100dvh; overflow: hidden auto;
     scrollbar-width: thin; scrollbar-color: var(--border) transparent;
     border-radius: 18px;
-    border: 1px solid var(--border);
-    background: var(--bg);
   }
   .page-shell::-webkit-scrollbar { width: 6px; }
   .page-shell::-webkit-scrollbar-track { background: transparent; }

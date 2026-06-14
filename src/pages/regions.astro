@@ -332,12 +332,15 @@ const searchData = allEntities.map(e => ({
     display: flex; flex-direction: column;
     position: relative; isolation: isolate;
     padding-bottom: 72px;
-    min-height: 100dvh;
+    max-height: 100dvh; overflow: hidden auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
     border-radius: 18px;
     border: 1px solid var(--border);
-    clip-path: inset(0 round 18px);
     background: var(--bg);
   }
+  .page-shell::-webkit-scrollbar { width: 6px; }
+  .page-shell::-webkit-scrollbar-track { background: transparent; }
+  .page-shell::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   /* ——— هدر ——— */
   .page-header {

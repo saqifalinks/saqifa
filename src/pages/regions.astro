@@ -131,6 +131,7 @@ const searchData = allEntities.map(e => ({
 ---
 
 <Layout title={category ? `${category.name} — سَقِیفَه` : "سَقِیفَه"}>
+  <div class="page-shell">
 
     <!-- هدر -->
     <header class="page-header">
@@ -173,7 +174,7 @@ const searchData = allEntities.map(e => ({
     )}
 
     <!-- لیست -->
-    <main class="entity-list" id="entity-list">
+    <section class="entity-list" id="entity-list" role="list">
       {pageError && <p class="empty-state">{pageError}</p>}
       {!pageError && entities.length === 0 && <p class="empty-state">هنوز موردی ثبت نشده است.</p>}
 
@@ -191,7 +192,7 @@ const searchData = allEntities.map(e => ({
               </div>
 
               <div class="entity-meta">
-                <span class="entity-name">
+                <h3 class="entity-name">
                   {entity.name}
                   {entity.verification_type === 'blue' && (
                     <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#3b9eff"></span>
@@ -199,7 +200,7 @@ const searchData = allEntities.map(e => ({
                   {entity.verification_type === 'gold' && (
                     <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#d4af37"></span>
                   )}
-                </span>
+                </h3>
                 {entity.title && <span class="entity-title">{entity.title}</span>}
               </div>
 
@@ -225,10 +226,10 @@ const searchData = allEntities.map(e => ({
                         );
                       })}
                     </div>
-                    <button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target={entity.id}>
+                    <button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target={entity.id} aria-label="بعدی">
                       <span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span>
                     </button>
-                    <button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target={entity.id}>
+                    <button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target={entity.id} aria-label="قبلی">
                       <span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span>
                     </button>
                   </div>
@@ -252,7 +253,7 @@ const searchData = allEntities.map(e => ({
           </div>
         );
       })}
-    </main>
+    </section>
 
   <!-- منوی پایین -->
   <nav class="bottom-nav">
@@ -272,7 +273,7 @@ const searchData = allEntities.map(e => ({
 
   <!-- Edge Menu -->
   <div class="edge-backdrop" id="edge-backdrop"></div>
-  <div class="edge-panel" id="edge-panel" style="position:fixed;top:50%;right:0">
+  <div class="edge-panel" id="edge-panel">
     <div class="edge-tab" id="edge-tab">
       <span class="edge-tab-text">دسته‌ها</span>
     </div>
@@ -304,7 +305,7 @@ const searchData = allEntities.map(e => ({
     <div class="bs-handle"></div>
     <div class="bs-search-row">
       <span class="iconify" data-icon="ph:magnifying-glass" data-width="16" data-height="16" style="color:var(--text-dim)"></span>
-      <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" />
+      <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" aria-label="جستجو" />
       <button id="bs-clear" class="bs-clear-btn" type="button" style="display:none">
         <span class="iconify" data-icon="ph:x" data-width="14" data-height="14"></span>
       </button>
@@ -317,6 +318,7 @@ const searchData = allEntities.map(e => ({
     <div class="bs-results" id="bs-results">
       <p class="bs-hint">برای جستجو تایپ کن...</p>
     </div>
+  </div>
   </div>
 
 </Layout>
@@ -378,6 +380,7 @@ const searchData = allEntities.map(e => ({
     transition: 0.15s;
   }
   .filter-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  :global(html[data-theme="dark"]) .filter-chip.active { background: #0ab3b3; border-color: #0ab3b3; }
 
   /* لیست */
   .entity-list { padding: 12px 16px 80px; display: flex; flex-direction: column; gap: 10px; }
@@ -454,10 +457,10 @@ const searchData = allEntities.map(e => ({
 
   /* منوی پایین */
   .bottom-nav {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-    display: flex; border-top: 1px solid var(--border);
-    background: color-mix(in srgb,var(--bg) 85%,transparent);
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 680px; display: flex;
+    background: var(--surface); border-top: 1px solid var(--border);
+    z-index: 40; padding-bottom: env(safe-area-inset-bottom);
   }
   .nav-item {
     flex: 1; display: flex; flex-direction: column; align-items: center;
@@ -466,18 +469,19 @@ const searchData = allEntities.map(e => ({
     color: var(--text-dim); text-decoration: none;
   }
 
-  /* Edge Menu */
+  /* ——— Edge Menu ——— */
   .edge-backdrop {
-    position: fixed; inset: 0; z-index: 100;
-    background: color-mix(in srgb,#000 30%,transparent);
-    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(3px);
+    z-index: 50;
     opacity: 0; pointer-events: none; transition: opacity 0.25s;
   }
   .edge-backdrop.open { opacity: 1; pointer-events: auto; }
   .edge-panel {
-    position: fixed; top: 50%; right: 0; z-index: 101;
-    display: flex; align-items: center;
+    position: fixed; top: 50%; left: 0;
     transform: translateY(-50%) translateX(calc(-100% + 28px));
+    z-index: 51; display: flex; align-items: center;
     transition: transform 0.3s cubic-bezier(0.34,1.4,0.64,1);
   }
   .edge-panel.open { transform: translateY(-50%) translateX(0); }
@@ -485,7 +489,7 @@ const searchData = allEntities.map(e => ({
     width: 28px; height: 110px; background: var(--primary);
     border-radius: 0 14px 14px 0; display: flex; align-items: center;
     justify-content: center; color: #fff; cursor: pointer;
-    flex-shrink: 0; box-shadow: -3px 0 14px color-mix(in srgb,var(--primary) 45%,transparent);
+    flex-shrink: 0; box-shadow: 3px 0 14px color-mix(in srgb,var(--primary) 45%,transparent);
   }
   .edge-tab-text {
     writing-mode: vertical-rl; font-size: 12px; font-weight: 700;
@@ -495,13 +499,14 @@ const searchData = allEntities.map(e => ({
     .edge-panel, .edge-backdrop { display: none !important; }
   }
   .edge-cats {
-    background: color-mix(in srgb,var(--surface) 90%,transparent);
-    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border); border-left: none;
-    border-radius: 16px 0 0 16px; padding: 4px 6px;
+    border-radius: 0 16px 16px 0;
+    padding: 4px 6px;
     display: flex; flex-direction: column; align-items: center;
     gap: 2px; max-height: 65vh; min-width: 64px;
-    box-shadow: -4px 0 20px color-mix(in srgb,#000 15%,transparent);
+    box-shadow: 4px 0 20px color-mix(in srgb,#000 15%,transparent);
   }
   .edge-scroll {
     display: flex; flex-direction: column; gap: 4px;
@@ -678,23 +683,29 @@ const searchData = allEntities.map(e => ({
   if (activeChip) setTimeout(()=>activeChip.scrollIntoView({behavior:"smooth",inline:"center",block:"nearest"}),150);
 
   // Edge Menu
-  const edgeTab=document.getElementById("edge-tab");
-  const edgeBackdrop=document.getElementById("edge-backdrop");
-  const edgePanel=document.getElementById("edge-panel");
-  // انتقال به body برای جلوگیری از تداخل ancestor
-  [edgeBackdrop,edgePanel].forEach(el=>{if(el)document.body.appendChild(el);});
+  const edgePanel = document.getElementById("edge-panel");
+  const edgeBackdrop = document.getElementById("edge-backdrop");
+  const edgeScroll = document.getElementById("edge-scroll");
+  const edgeUp = document.getElementById("edge-up");
+  const edgeDown = document.getElementById("edge-down");
+
   function lockBody(lock){document.documentElement.style.overflow=lock?"hidden":""}
-  if(edgeTab&&edgeBackdrop&&edgePanel){
-    edgeTab.addEventListener("click",()=>{
-      const o=edgePanel.classList.contains("open");
-      edgePanel.classList.toggle("open"); edgeBackdrop.classList.toggle("open");
-      lockBody(!o);
-    });
-    edgeBackdrop.addEventListener("click",()=>{
-      edgePanel.classList.remove("open"); edgeBackdrop.classList.remove("open");
-      lockBody(false);
-    });
+  function openEdge()  { edgePanel?.classList.add("open"); edgeBackdrop?.classList.add("open"); updateEdgeArrows(); lockBody(true); }
+  function closeEdge() { edgePanel?.classList.remove("open"); edgeBackdrop?.classList.remove("open"); lockBody(false); }
+
+  document.getElementById("edge-tab")?.addEventListener("click", () =>
+    edgePanel?.classList.contains("open") ? closeEdge() : openEdge()
+  );
+  edgeBackdrop?.addEventListener("click", closeEdge);
+
+  function updateEdgeArrows() {
+    if (!edgeScroll) return;
+    edgeUp?.classList.toggle("hidden", edgeScroll.scrollTop <= 4);
+    edgeDown?.classList.toggle("hidden", edgeScroll.scrollTop >= edgeScroll.scrollHeight - edgeScroll.clientHeight - 4);
   }
+  edgeScroll?.addEventListener("scroll", updateEdgeArrows);
+  edgeUp?.addEventListener("click",   () => edgeScroll?.scrollBy({ top: -120, behavior: "smooth" }));
+  edgeDown?.addEventListener("click", () => edgeScroll?.scrollBy({ top:  120, behavior: "smooth" }));
 
   // اسکرول افقی فیلتر با چرخ موس
   document.querySelectorAll(".filter-options").forEach(el=>{
@@ -702,12 +713,6 @@ const searchData = allEntities.map(e => ({
       e.preventDefault();
       el.scrollLeft += e.deltaY;
     },{passive:false});
-  });
-  document.getElementById("edge-up")?.addEventListener("click",()=>{
-    document.getElementById("edge-scroll")?.scrollBy({top:-120,behavior:"smooth"});
-  });
-  document.getElementById("edge-down")?.addEventListener("click",()=>{
-    document.getElementById("edge-scroll")?.scrollBy({top:120,behavior:"smooth"});
   });
 
   // نرمالایز کاراکتر برای جستجوی چندزبانه
@@ -962,10 +967,10 @@ const searchData = allEntities.map(e => ({
       html+=`<button class="entity-row" type="button" aria-expanded="false">`;
       html+=`<div class="avatar" style="--av:${c}">`;
       if(e.avatar_url)html+=`<img src="${escHtml(e.avatar_url)}" alt="${en}" loading="lazy">`;else html+=`<span>${init}</span>`;
-      html+=`</div><div class="entity-meta"><span class="entity-name">${en}`;
+      html+=`</div><div class="entity-meta"><h3 class="entity-name">${en}`;
       if(e.verification_type==="blue")html+=` <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#3b9eff"></span>`;
       else if(e.verification_type==="gold")html+=` <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#d4af37"></span>`;
-      html+=`</span>${et?`<span class="entity-title">${et}</span>`:""}</div>`;
+      html+=`</h3>${et?`<span class="entity-title">${et}</span>`:""}</div>`;
       html+=`<span class="iconify chevron" data-icon="ph:caret-down" data-width="14" data-height="14"></span>`;
       html+=`</button><div class="acc-body"><div class="acc-inner">`;
       if(ed)html+=`<p class="acc-bio">${ed}</p>`;
@@ -975,7 +980,7 @@ const searchData = allEntities.map(e => ({
           const p=platInfo(l.platform),nu=normalizeUrl(l.url,l.platform);
           html+=`<a href="${nu}" target="_blank" rel="noreferrer noopener" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><span class="iconify" data-icon="${p.icon}" data-width="22" data-height="22"></span></a>`;
         }
-        html+=`</div><button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target="${e.id}"><span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span></button><button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target="${e.id}"><span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span></button></div>`;
+        html+=`</div><button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target="${e.id}" aria-label="بعدی"><span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span></button><button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target="${e.id}" aria-label="قبلی"><span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span></button></div>`;
       }else html+=`<p class="no-links">لینکی ثبت نشده است.</p>`;
       const ej=JSON.stringify({name:e.name,title:e.title,description:e.description,links:links.map(l=>({platform:l.platform,url:normalizeUrl(l.url,l.platform)}))}).replace(/'/g,"&#39;");
       html+=`<div class="acc-actions"><button class="action-btn report-btn" type="button" data-name="${en}"><span class="iconify" data-icon="ph:warning" data-width="14" data-height="14"></span> گزارش خرابی</button><button class="action-btn share-btn" type="button" data-entity='${ej}'><span class="iconify" data-icon="ph:share-network" data-width="14" data-height="14"></span> اشتراک‌گذاری</button></div>`;

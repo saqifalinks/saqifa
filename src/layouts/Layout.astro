@@ -3,10 +3,11 @@ import "../styles/global.css";
 
 interface Props {
   title?: string;
+  description?: string;
   wide?: boolean;
 }
 
-const { title = "سَقِیفَه", wide = false } = Astro.props;
+const { title = "سَقِیفَه", description = "گذرگاهی جامع به سوی هزاران منبع دیجیتالِ اسلامی؛ دستیابی به شبکه گسترده‌ای از فعالیت‌های رسمی اشخاص و مؤسسات دینی ایران و افغانستان. جستجوی آسان منابع معتبر به زبان‌های فارسی، عربی، بلوچی، کردی، ترکی، ترکمنی و پشتو در تمامی پلتفرم‌های فضای مجازی.", wide = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -15,6 +16,16 @@ const { title = "سَقِیفَه", wide = false } = Astro.props;
     <script>document.documentElement.dataset.theme=localStorage.getItem("theme")==="light"?"light":"dark"</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={Astro.url} />
+    <meta property="og:image" content={new URL("/favicon.svg", Astro.url).href} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href={Astro.url} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

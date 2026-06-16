@@ -4,7 +4,7 @@ const SB_URL = import.meta.env.SUPABASE_URL;
 const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
 ---
 
-<div id="modal-overlay" class="modal-overlay">
+<div id="modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
   <div id="modal-about" class="modal-card">
     <div class="modal-body">
       <h3 class="modal-title-center">درباره سقیفه</h3>
@@ -57,10 +57,10 @@ const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
     </div>
     <div class="modal-body">
       <form id="suggest-form" class="suggest-form">
-        <label class="input-label">نام شما (اختیاری):</label>
+        <label class="input-label" for="suggest-sender">نام شما (اختیاری):</label>
         <input type="text" id="suggest-sender" placeholder="مثلاً: عمر محمدی..." class="modal-input" />
 
-        <label class="input-label">عنوان مجموعه / شخصیت:</label>
+        <label class="input-label" for="suggest-target">عنوان مجموعه / شخصیت:</label>
         <input type="text" id="suggest-target" placeholder="مثلاً: کتابخانه دیجیتال..." class="modal-input" required />
 
         <label class="input-label">لینک‌ها:</label>
@@ -72,13 +72,13 @@ const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
                   <span class="iconify" data-icon={p.icon} data-width="16"></span>
                 </div>
                 <span class="pr-label">{p.label}</span>
-                <input type="text" id={`link-${p.id}`} placeholder={{'youtube':'https://youtube.com/...','website':'https://website.com/...','aparat':'https://aparat.com/...','facebook':'https://facebook.com/...','soundcloud':'https://soundcloud.com/...','castbox':'https://castbox.com/...','email':'آدرس ایمیل کامل','phone':'شماره تماس با کد کشور'}[p.id] ?? 'آی دی یا آدرس کامل'} dir="ltr" class="pr-input" />
+                <input type="text" id={`link-${p.id}`} placeholder={{'youtube':'https://youtube.com/...','website':'https://website.com/...','aparat':'https://aparat.com/...','facebook':'https://facebook.com/...','soundcloud':'https://soundcloud.com/...','castbox':'https://castbox.com/...','email':'آدرس ایمیل کامل','phone':'شماره تماس با کد کشور'}[p.id] ?? 'آی دی یا آدرس کامل'} dir="ltr" class="pr-input" aria-label={p.label} />
               </div>
             ))}
           </div>
         </div>
 
-        <label class="input-label">توضیحات بیشتر:</label>
+        <label class="input-label" for="suggest-notes">توضیحات بیشتر:</label>
         <textarea id="suggest-notes" placeholder="توضیحات کوتاه..." class="modal-input" rows="2"></textarea>
 
         <button type="submit" class="btn-submit" id="suggest-submit">

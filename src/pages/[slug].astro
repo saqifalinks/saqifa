@@ -180,7 +180,7 @@ const searchData = allEntities.map(e => ({
     )}
 
     <!-- لیست -->
-    <main class="entity-list" id="entity-list">
+    <section class="entity-list" id="entity-list" role="list">
       {pageError && <p class="empty-state">{pageError}</p>}
       {!pageError && entities.length === 0 && <p class="empty-state">هنوز موردی ثبت نشده است.</p>}
 
@@ -198,7 +198,7 @@ const searchData = allEntities.map(e => ({
               </div>
 
               <div class="entity-meta">
-                <span class="entity-name">
+                <h3 class="entity-name">
                   {entity.name}
                   {entity.verification_type === 'blue' && (
                     <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#3b9eff"></span>
@@ -206,7 +206,7 @@ const searchData = allEntities.map(e => ({
                   {entity.verification_type === 'gold' && (
                     <span class="iconify verified-badge" data-icon="ph:seal-check-fill" data-width="15" data-height="15" style="color:#d4af37"></span>
                   )}
-                </span>
+                </h3>
                 {entity.title && <span class="entity-title">{entity.title}</span>}
               </div>
 
@@ -232,10 +232,10 @@ const searchData = allEntities.map(e => ({
                         );
                       })}
                     </div>
-                    <button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target={entity.id}>
+                    <button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target={entity.id} aria-label="بعدی">
                       <span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span>
                     </button>
-                    <button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target={entity.id}>
+                    <button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target={entity.id} aria-label="قبلی">
                       <span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span>
                     </button>
                   </div>
@@ -259,7 +259,7 @@ const searchData = allEntities.map(e => ({
           </div>
         );
       })}
-    </main>
+    </section>
 
     <!-- منوی پایین -->
     <nav class="bottom-nav">
@@ -313,7 +313,7 @@ const searchData = allEntities.map(e => ({
       </div>
       <div class="bs-search-row">
         <span class="iconify" data-icon="ph:magnifying-glass" data-width="16" data-height="16" style="color:var(--text-dim)"></span>
-        <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" />
+        <input id="bs-input" type="text" placeholder="جستجو کن..." autocomplete="off" aria-label="جستجو" />
         <button id="bs-clear" class="bs-clear-btn" type="button" style="display:none">
           <span class="iconify" data-icon="ph:x" data-width="14" data-height="14"></span>
         </button>
@@ -425,7 +425,8 @@ const searchData = allEntities.map(e => ({
     font-weight: 700;
     color: #068f8f;
   }
-  :global(html[data-theme="light"]) .entity-title { color: #008080; }
+  :global(html[data-theme="dark"]) .entity-title { color: #0bc6c6; }
+  :global(html[data-theme="light"]) .entity-title { color: #006060; }
 
   .chevron {
     color: var(--text-dim);
@@ -612,6 +613,7 @@ const searchData = allEntities.map(e => ({
     border-color: var(--primary);
     color: #fff;
   }
+  :global(html[data-theme="dark"]) .filter-chip.active { background: #0ab3b3; border-color: #0ab3b3; }
 
   /* ——— منوی پایین ——— */
   .bottom-nav {
@@ -847,6 +849,7 @@ const searchData = allEntities.map(e => ({
   .bs-entity-card {
     display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-height: 44px;
     cursor: pointer; transition: background 0.12s; border-radius: 12px; width: 100%;
+    border: none; background: none; font-family: inherit; font-size: inherit; text-align: inherit;
   }
   .bs-entity-card:hover { background: color-mix(in srgb,var(--primary) 5%,transparent); }
   .bs-entity-name { font-size: 13px; font-weight: 800; }
@@ -990,8 +993,6 @@ const searchData = allEntities.map(e => ({
   // Edge Menu
   const edgePanel = document.getElementById("edge-panel");
   const edgeBackdrop = document.getElementById("edge-backdrop");
-  // انتقال به body برای جلوگیری از تداخل ancestor
-  [edgeBackdrop,edgePanel].forEach(el=>{if(el)document.body.appendChild(el);});
   const edgeScroll = document.getElementById("edge-scroll");
   const edgeUp = document.getElementById("edge-up");
   const edgeDown = document.getElementById("edge-down");
@@ -1132,23 +1133,21 @@ const searchData = allEntities.map(e => ({
 
     let out = "";
 
-    // نتایج فیلتر (منطقه و ...) — بدون برچسب
     filterResults.forEach(e => {
       out += `
-        <div class="bs-entity-card" onclick="scrollToEntity('${e.id}')">
+        <button class="bs-entity-card" onclick="scrollToEntity('${e.id}')" type="button">
           <span class="bs-entity-name" style="color:var(--primary)">${e.name}</span>
-        </div>
+        </button>
         <div class="bs-divider"></div>`;
     });
 
-    // نتایج اسم/عنوان — فقط وقتی فیلتری پیدا نشده
     if (entityResults.length) {
       if (activeFilter === "all") out += `<p class="bs-section-title">اشخاص و موسسات</p>`;
       entityResults.forEach(e => {
         out += `
-          <div class="bs-entity-card" onclick="scrollToEntity('${e.id}')">
+          <button class="bs-entity-card" onclick="scrollToEntity('${e.id}')" type="button">
             <span class="bs-entity-name" style="color:var(--primary)">${e.name}</span>
-          </div>
+          </button>
           <div class="bs-divider"></div>`;
       });
     }

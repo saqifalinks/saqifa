@@ -97,7 +97,7 @@ const stats = [
 <nav class="right-nav" id="right-nav">
   <div class="rn-brand">
     <div class="rn-brand-icon">
-      <img src="/icons/link-circle.svg" width="24" height="24" alt="">
+      <img src="/icons/link-circle.svg" width="24" height="24" alt="لوگوی سقیفه">
     </div>
     <a href="/" class="rn-brand-text">
       <span class="rn-brand-name">سَقِيــــفه</span>
@@ -109,21 +109,21 @@ const stats = [
     {otherCategories.map(cat=>(
       <button class="rn-cat-btn" type="button"
         data-cat-id={cat.id} data-cat-name={cat.name} data-cat-slug={cat.slug}>
-        {isLocalIcon(cat.slug) ? <img src={`/icons/${cat.slug}.svg`} width="22" height="22" alt=""> : <span class="iconify" data-icon={getCategoryIcon(cat.slug)} data-width="22"></span>}
+        {isLocalIcon(cat.slug) ? <img src={`/icons/${cat.slug}.svg`} width="22" height="22" alt={cat.name}> : <span class="iconify" data-icon={getCategoryIcon(cat.slug)} data-width="22"></span>}
         <span class="rn-cat-label">{cat.name}</span>
       </button>
     ))}
     {regionsCategory && (
       <button class="rn-cat-btn" type="button"
         data-cat-id={regionsCategory.id} data-cat-name={regionsCategory.name} data-cat-slug={regionsCategory.slug}>
-        {isLocalIcon(regionsCategory.slug) ? <img src={`/icons/${regionsCategory.slug}.svg`} width="22" height="22" alt=""> : <span class="iconify" data-icon={getCategoryIcon(regionsCategory.slug)} data-width="22"></span>}
+        {isLocalIcon(regionsCategory.slug) ? <img src={`/icons/${regionsCategory.slug}.svg`} width="22" height="22" alt={regionsCategory.name}> : <span class="iconify" data-icon={getCategoryIcon(regionsCategory.slug)} data-width="22"></span>}
         <span class="rn-cat-label">{regionsCategory.name}</span>
       </button>
     )}
     {langCategories.length > 0 && (
       <div class="rn-cat-group">
         <button class="rn-cat-btn group-trigger" type="button">
-          {isLocalIcon('Languages') ? <img src="/icons/Languages.svg" width="22" height="22" alt=""> : <span class="iconify" data-icon="ph:translate-bold" data-width="22"></span>}
+          {isLocalIcon('Languages') ? <img src="/icons/Languages.svg" width="22" height="22" alt="زبان‌ها"> : <span class="iconify" data-icon="ph:translate-bold" data-width="22"></span>}
           <span class="rn-cat-label">زبان</span>
           <span class="iconify group-chevron" data-icon="ph:caret-left-bold" data-width="10"></span>
         </button>
@@ -167,7 +167,7 @@ const stats = [
     <div class="ds-body" id="ds-body">
       <div class="ds-input-wrap">
         <span class="iconify" data-icon="ph:magnifying-glass-bold" data-width="16" style="color:var(--text-dim);flex-shrink:0"></span>
-        <input id="ds-input" type="text" placeholder="جستجو در سراسر سایت..." autocomplete="off" />
+        <input id="ds-input" type="text" placeholder="جستجو در سراسر سایت..." autocomplete="off" aria-label="جستجو" />
         <button id="ds-clear" class="ds-clear" type="button" style="display:none">
           <span class="iconify" data-icon="ph:x-bold" data-width="12"></span>
         </button>
@@ -244,7 +244,7 @@ const stats = [
       <div class="cats-grid">
         {otherCategories.map(cat=>(
           <a href={`/${cat.slug}`} class="cat-card glass-card">
-            {isLocalIcon(cat.slug) ? <span class="cat-icon-box"><img src={`/icons/${cat.slug}.svg`} width="26" height="26" alt=""></span> : <span class="iconify" data-icon={getCategoryIcon(cat.slug)} data-width="26" style="color:var(--primary)"></span>}
+            {isLocalIcon(cat.slug) ? <span class="cat-icon-box"><img src={`/icons/${cat.slug}.svg`} width="26" height="26" alt={cat.name}></span> : <span class="iconify" data-icon={getCategoryIcon(cat.slug)} data-width="26" style="color:var(--primary)"></span>}
             <span class="cat-name">{cat.name}</span>
           </a>
         ))}
@@ -256,14 +256,14 @@ const stats = [
       </div>
       <div class="mob-extra-links">
         <button class="mob-lang-btn glass-card" id="mob-lang-btn" type="button">
-          {isLocalIcon('Languages') ? <span class="cat-icon-box"><img src="/icons/Languages.svg" width="20" height="20" alt=""></span> : <span class="iconify" data-icon="ph:translate-bold" data-width="20" style="color:var(--primary)"></span>}
+          {isLocalIcon('Languages') ? <span class="cat-icon-box"><img src="/icons/Languages.svg" width="20" height="20" alt="زبان‌ها"></span> : <span class="iconify" data-icon="ph:translate-bold" data-width="20" style="color:var(--primary)"></span>}
           <span>زبان</span>
           <span class="iconify mob-chevron" data-icon="ph:caret-down-bold" data-width="12"></span>
         </button>
 
         {regionsCategory && (
           <a href="/regions" class="mob-region-link glass-card">
-            {isLocalIcon(regionsCategory.slug) ? <span class="cat-icon-box"><img src={`/icons/${regionsCategory.slug}.svg`} width="20" height="20" alt=""></span> : <span class="iconify" data-icon={getCategoryIcon(regionsCategory.slug)} data-width="20" style="color:var(--primary)"></span>}
+            {isLocalIcon(regionsCategory.slug) ? <span class="cat-icon-box"><img src={`/icons/${regionsCategory.slug}.svg`} width="20" height="20" alt={regionsCategory.name}></span> : <span class="iconify" data-icon={getCategoryIcon(regionsCategory.slug)} data-width="20" style="color:var(--primary)"></span>}
             <span>مناطق</span>
             <span class="iconify" data-icon="ph:arrow-left-bold" data-width="14" style="color:var(--text-dim)"></span>
           </a>
@@ -274,7 +274,7 @@ const stats = [
       <div class="mob-lang-overlay" id="mob-lang-overlay" style="display:none">
         <div class="mob-lang-panel">
           <div class="mob-lang-header">
-            {isLocalIcon('Languages') ? <img src="/icons/Languages.svg" width="22" height="22" alt="" style="color:var(--primary)"> : <span class="iconify" data-icon="ph:translate-bold" data-width="22" style="color:var(--primary)"></span>}
+            {isLocalIcon('Languages') ? <img src="/icons/Languages.svg" width="22" height="22" alt="زبان‌ها" style="color:var(--primary)"> : <span class="iconify" data-icon="ph:translate-bold" data-width="22" style="color:var(--primary)"></span>}
             <span>انتخاب زبان</span>
             <button class="mob-lang-close" id="mob-lang-close" type="button">
               <span class="iconify" data-icon="ph:x-bold" data-width="18"></span>
@@ -304,14 +304,14 @@ const stats = [
           {otherCategories.map(cat=>(
             <button type="button" class="cat-card glass-card"
               data-cat-id={cat.id} data-cat-name={cat.name}>
-              {isLocalIcon(cat.slug) ? <span class="cat-icon-box"><img src={`/icons/${cat.slug}.svg`} width="26" height="26" alt=""></span> : <span class="iconify" data-icon={getCategoryIcon(cat.slug)} data-width="26" style="color:var(--primary)"></span>}
+              {isLocalIcon(cat.slug) ? <span class="cat-icon-box"><img src={`/icons/${cat.slug}.svg`} width="26" height="26" alt={cat.name}></span> : <span class="iconify" data-icon={getCategoryIcon(cat.slug)} data-width="26" style="color:var(--primary)"></span>}
               <span class="cat-name">{cat.name}</span>
             </button>
           ))}
           {regionsCategory && (
             <button type="button" class="cat-card glass-card"
               data-cat-id={regionsCategory.id} data-cat-name={regionsCategory.name}>
-              {isLocalIcon(regionsCategory.slug) ? <span class="cat-icon-box"><img src={`/icons/${regionsCategory.slug}.svg`} width="26" height="26" alt=""></span> : <span class="iconify" data-icon={getCategoryIcon(regionsCategory.slug)} data-width="26" style="color:var(--primary)"></span>}
+              {isLocalIcon(regionsCategory.slug) ? <span class="cat-icon-box"><img src={`/icons/${regionsCategory.slug}.svg`} width="26" height="26" alt={regionsCategory.name}></span> : <span class="iconify" data-icon={getCategoryIcon(regionsCategory.slug)} data-width="26" style="color:var(--primary)"></span>}
               <span class="cat-name">{regionsCategory.name}</span>
             </button>
           )}
@@ -411,15 +411,15 @@ const stats = [
     </button>
   </div>
   <nav class="ms-links">
-    <a href="#" class="ms-link open-add-trigger">
+    <button class="ms-link open-add-trigger" type="button">
       <span class="iconify" data-icon="ph:plus-circle-bold" data-width="18"></span>افزودن لینک
-    </a>
-    <a href="#" class="ms-link open-contact-trigger">
+    </button>
+    <button class="ms-link open-contact-trigger" type="button">
       <span class="iconify" data-icon="ph:headset-bold" data-width="18"></span>تماس با ما
-    </a>
-    <a href="#" class="ms-link open-about-trigger">
+    </button>
+    <button class="ms-link open-about-trigger" type="button">
       <span class="iconify" data-icon="ph:info-bold" data-width="18"></span>درباره ما
-    </a>
+    </button>
     <a href="https://fanoosarea.vercel.app" target="_blank" rel="noreferrer" class="ms-link">
       <span class="iconify" data-icon="ph:stack-bold" data-width="18"></span>پروژه‌های دیگر
     </a>
@@ -453,7 +453,7 @@ const stats = [
   </div>
   <div class="ms-search-row">
     <span class="iconify" data-icon="ph:magnifying-glass-bold" data-width="16" style="color:var(--text-dim);flex-shrink:0"></span>
-    <input id="ms-input" type="text" placeholder="جستجو در سراسر سایت..." autocomplete="off" />
+    <input id="ms-input" type="text" placeholder="جستجو در سراسر سایت..." autocomplete="off" aria-label="جستجو" />
     <button id="ms-clear" class="ms-clear-btn" type="button" style="display:none">
       <span class="iconify" data-icon="ph:x-bold" data-width="12"></span>
     </button>
@@ -687,7 +687,7 @@ html[data-theme="light"] .disclaimer-box {
   display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px;
   background: color-mix(in srgb,var(--text-dim) 6%,transparent); border: 1px solid var(--border);
   color: var(--text-main); text-decoration: none; font-size: 13px; font-weight: 600;
-  cursor: pointer; font-family: inherit; transition: border-color 0.15s, color 0.15s;
+  cursor: pointer; font-family: inherit; text-align: inherit; transition: border-color 0.15s, color 0.15s;
 }
 .ms-link:hover { border-color: var(--primary); color: var(--primary); }
 
@@ -1079,7 +1079,9 @@ html[data-theme="light"] .disclaimer-box {
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
   .entity-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: right; }
   .entity-name { font-size: 14px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 4px; }
-  .entity-title-text { font-size: 11px; font-weight: 700; color: var(--primary); }
+  .entity-title-text { font-size: 11px; font-weight: 700; color: #068f8f; }
+  :global(html[data-theme="dark"]) .entity-title-text { color: #0bc6c6; }
+  :global(html[data-theme="light"]) .entity-title-text { color: #006060; }
   .chevron-icon { color: var(--text-dim); flex-shrink: 0; transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); }
   .entity-item.open .chevron-icon { transform: rotate(180deg); }
   .acc-body { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
@@ -1163,6 +1165,7 @@ html[data-theme="light"] .disclaimer-box {
   }
   .filter-chip:hover { color: var(--primary); border-color: var(--primary); }
   .filter-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  :global(html[data-theme="dark"]) .filter-chip.active { background: #0ab3b3; border-color: #0ab3b3; }
 </style>
 
 <script is:inline define:vars={{ slides, slideIconMap, ctaMap, SB_URL, SB_KEY, PlatData: PLATFORMS, CatMap: categories.reduce((m,c)=>(m[c.id]=c,m),{}), platCounts: platformCounts }}>
@@ -1562,12 +1565,12 @@ html[data-theme="light"] .disclaimer-box {
     const color=getAVColor(entity.name);
     const initial=entity.name?.trim()?.[0]??"؟";
     const links=(entity.links??[]).sort((a,b)=>a.display_order-b.display_order);
-    const av=entity.avatar_url?`<img src="${entity.avatar_url}" alt="" style="width:100%;height:100%;object-fit:cover">`
+    const av=entity.avatar_url?`<img src="${entity.avatar_url}" alt="${entity.name}" style="width:100%;height:100%;object-fit:cover">`
       :initial;
-    const linksHtml=links.map(l=>{const p=getP(l.platform);const nu=normalizeUrl(l.url,l.platform);return`<a href="${nu}" target="_blank" rel="noreferrer" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}"><span class="iconify" data-icon="${p.icon}" data-width="22"></span></a>`;}).join("")||`<p class="no-links">لینکی ثبت نشده.</p>`;
+    const linksHtml=links.map(l=>{const p=getP(l.platform);const nu=normalizeUrl(l.url,l.platform);return`<a href="${nu}" target="_blank" rel="noreferrer" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><span class="iconify" data-icon="${p.icon}" data-width="22"></span></a>`;}).join("")||`<p class="no-links">لینکی ثبت نشده.</p>`;
     const div=document.createElement("div");
     div.className="entity-item"; div.setAttribute("data-id",entity.id);
-    div.innerHTML=`<button class="entity-row" type="button" aria-expanded="false"><div class="avatar" style="--av:${color}">${av}</div><div class="entity-meta"><span class="entity-name">${entity.name}${entity.verification_type==='blue'?'<span class="iconify" data-icon="ph:seal-check-fill" data-width="14" style="color:#3b9eff"></span>':entity.verification_type==='gold'?'<span class="iconify" data-icon="ph:seal-check-fill" data-width="14" style="color:#d4af37"></span>':''}</span>${entity.title?`<span class="entity-title-text">${entity.title}</span>`:''}</div><span class="iconify chevron-icon" data-icon="ph:caret-down-bold" data-width="13"></span></button><div class="acc-body"><div class="acc-inner">${entity.description?`<p class="acc-bio">${entity.description}</p>`:''}<div class="social-scroll-wrap"><div class="social-scroll" data-sid="${entity.id}">${linksHtml}</div><button class="scroll-arr scroll-arr--r" data-dir="right" data-sid="${entity.id}" type="button"><span class="iconify" data-icon="ph:caret-left-bold" data-width="11"></span></button><button class="scroll-arr scroll-arr--l" data-dir="left" data-sid="${entity.id}" type="button"><span class="iconify" data-icon="ph:caret-right-bold" data-width="11"></span></button></div><div class="acc-actions"><button class="action-btn report-btn" data-name="${entity.name}" type="button"><span class="iconify" data-icon="ph:warning-bold" data-width="13"></span> گزارش خرابی لینک</button><button class="action-btn share-btn" data-name="${entity.name}" data-url="${location.href}" type="button"><span class="iconify" data-icon="ph:share-network-bold" data-width="13"></span> اشتراک‌گذاری</button></div></div></div>`;
+    div.innerHTML=`<button class="entity-row" type="button" aria-expanded="false"><div class="avatar" style="--av:${color}">${av}</div><div class="entity-meta"><h3 class="entity-name">${entity.name}${entity.verification_type==='blue'?'<span class="iconify" data-icon="ph:seal-check-fill" data-width="14" style="color:#3b9eff"></span>':entity.verification_type==='gold'?'<span class="iconify" data-icon="ph:seal-check-fill" data-width="14" style="color:#d4af37"></span>':''}</h3>${entity.title?`<span class="entity-title-text">${entity.title}</span>`:''}</div><span class="iconify chevron-icon" data-icon="ph:caret-down-bold" data-width="13"></span></button><div class="acc-body"><div class="acc-inner">${entity.description?`<p class="acc-bio">${entity.description}</p>`:''}<div class="social-scroll-wrap"><div class="social-scroll" data-sid="${entity.id}">${linksHtml}</div><button class="scroll-arr scroll-arr--r" data-dir="right" data-sid="${entity.id}" type="button" aria-label="بعدی"><span class="iconify" data-icon="ph:caret-left-bold" data-width="11"></span></button><button class="scroll-arr scroll-arr--l" data-dir="left" data-sid="${entity.id}" type="button" aria-label="قبلی"><span class="iconify" data-icon="ph:caret-right-bold" data-width="11"></span></button></div><div class="acc-actions"><button class="action-btn report-btn" data-name="${entity.name}" type="button"><span class="iconify" data-icon="ph:warning-bold" data-width="13"></span> گزارش خرابی لینک</button><button class="action-btn share-btn" data-name="${entity.name}" data-url="${location.href}" type="button"><span class="iconify" data-icon="ph:share-network-bold" data-width="13"></span> اشتراک‌گذاری</button></div></div></div>`;
 
     div.querySelector(".entity-row")?.addEventListener("click",()=>{
       const isOpen=div.classList.contains("open");
@@ -1823,14 +1826,20 @@ html[data-theme="light"] .disclaimer-box {
   // مودال‌ها
   const overlay=document.getElementById("modal-overlay");
   function openM(id) {
-    if(!overlay)return; overlay.style.display="flex";
+    if(!overlay)return; overlay.style.display="flex"; overlay.setAttribute("aria-hidden","false");
     document.querySelectorAll(".modal-card").forEach(m=>m.style.display="none");
     const modal=document.getElementById(id); if(modal)modal.style.display="block";
+    const closeBtn=modal?.querySelector(".close-modal-icon, .close-modal");
+    if(closeBtn) setTimeout(()=>closeBtn.focus(),100);
+  }
+  function closeModal() {
+    if(overlay)overlay.style.display="none"; overlay?.setAttribute("aria-hidden","true");
   }
   document.querySelectorAll(".open-about-trigger").forEach(el=>el.addEventListener("click",()=>openM("modal-about")));
   document.querySelectorAll(".open-contact-trigger").forEach(el=>el.addEventListener("click",()=>openM("modal-contact")));
   document.querySelectorAll(".open-add-trigger").forEach(el=>el.addEventListener("click",()=>openM("modal-add")));
 
-  document.querySelectorAll(".close-modal").forEach(b=>b.addEventListener("click",()=>overlay.style.display="none"));
-  overlay?.addEventListener("click",e=>{if(e.target===overlay)overlay.style.display="none";});
+  document.querySelectorAll(".close-modal").forEach(b=>b.addEventListener("click",closeModal));
+  overlay?.addEventListener("click",e=>{if(e.target===overlay)closeModal();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 </script>

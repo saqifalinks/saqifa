@@ -134,6 +134,7 @@ const searchData = allEntities.map(e => ({
   <div class="page-shell">
 
     <!-- هدر -->
+    <div class="page-sticky">
     <header class="page-header">
       <h1 class="page-title">{category?.name ?? "مناطق"}</h1>
     </header>
@@ -172,6 +173,7 @@ const searchData = allEntities.map(e => ({
         ))}
       </div>
     )}
+    </div>
 
     <!-- لیست -->
     <section class="entity-list" id="entity-list" role="list">
@@ -318,7 +320,11 @@ const searchData = allEntities.map(e => ({
     <div class="bs-results" id="bs-results">
       <p class="bs-hint">برای جستجو تایپ کن...</p>
     </div>
-  </div>
+    </div>
+    <!-- دکمه برگشت به بالا -->
+    <button class="scroll-to-top" id="scroll-to-top" type="button" aria-label="برگشت به بالا">
+      <span class="iconify" data-icon="ph:arrow-up-bold" data-width="18" data-height="18"></span>
+    </button>
   </div>
 
 </Layout>
@@ -332,13 +338,18 @@ const searchData = allEntities.map(e => ({
     padding-bottom: 72px;
   }
 
-  /* ——— هدر ——— */
-  .page-header {
-    padding: 28px 20px 18px;
+  /* ——— هدر چسبنده + فیلتر ——— */
+  .page-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     background: color-mix(in srgb, var(--surface) 85%, transparent);
     backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 20;
+  }
+  .page-header {
+    padding: 28px 20px 18px;
   }
   .page-title {
     font-size: 24px;
@@ -350,7 +361,7 @@ const searchData = allEntities.map(e => ({
   }
 
   /* فیلتر */
-  .filter-bar  { padding: 12px 16px 10px; display: flex; flex-wrap: wrap; gap: 10px; background: color-mix(in srgb, var(--surface) 85%, transparent); backdrop-filter: blur(12px); position: sticky; top: 75px; z-index: 19; }
+  .filter-bar  { padding: 12px 16px 10px; display: flex; flex-wrap: wrap; gap: 10px; }
   .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
   .filter-label { font-size: 12px; font-weight: 800; color: var(--text-dim); margin-left: 4px; }
   .fscroll-wrap { position: relative; display: flex; align-items: center; min-width: 0; width: 100%; }
@@ -610,6 +621,23 @@ const searchData = allEntities.map(e => ({
     transition: opacity 0.4s; white-space: nowrap;
   }
   .copy-feedback.fade-out { opacity: 0; }
+  .scroll-to-top {
+    position: fixed; bottom: 90px; left: 16px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--primary); color: #fff; border: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    cursor: pointer; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: translateY(12px); pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .scroll-to-top.visible {
+    opacity: 1; transform: translateY(0); pointer-events: auto;
+  }
+  .scroll-to-top:hover { filter: brightness(1.15); }
+  @media (min-width: 769px) {
+    .scroll-to-top { bottom: 32px; left: 32px; }
+  }
 </style>
 
 <script is:inline define:vars={{ searchData, SB_URL, SB_KEY, categoryId: category?.id ?? '' }}>
@@ -1023,4 +1051,15 @@ const searchData = allEntities.map(e => ({
     document.querySelectorAll(".filter-chip").forEach(c=>{const s=c.dataset.filterSlug,o=c.dataset.optionId;c.classList.toggle("active",filters[s]===o||(!filters[s]&&!o));});
     fetchAndRender(filters);
   });
+
+  // دکمه برگشت به بالا
+  (function(){
+    const btn=document.getElementById("scroll-to-top");
+    if(!btn)return;
+    let ticking=false;
+    window.addEventListener("scroll",()=>{
+      if(!ticking){requestAnimationFrame(()=>{btn.classList.toggle("visible",window.scrollY>300);ticking=false;});ticking=true;}
+    });
+    btn.addEventListener("click",()=>window.scrollTo({top:0,behavior:"smooth"}));
+  })();
 </script>

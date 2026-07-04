@@ -357,6 +357,7 @@ const stats = [
 
   <!-- نمای دسته دسکتاپ -->
   <div id="cat-view" style="display:none">
+    <div class="cat-view-sticky">
     <div class="cat-view-header">
       <button class="cat-back-btn" id="cat-back" type="button">
         <span class="iconify" data-icon="ph:arrow-right-bold" data-width="15"></span>
@@ -364,13 +365,18 @@ const stats = [
       <h2 class="cat-view-title" id="cat-view-title"></h2>
     </div>
     <div id="cat-filter-bar"></div>
+    </div>
     <div class="entity-list" id="entity-list">
       <div class="loading-state">
         <span class="iconify spin" data-icon="ph:spinner-bold" data-width="28" style="color:var(--primary)"></span>
       </div>
     </div>
-  </div>
+    </div>
 
+    <!-- دکمه برگشت به بالا -->
+    <button class="scroll-to-top" id="scroll-to-top" type="button" aria-label="برگشت به بالا">
+      <span class="iconify" data-icon="ph:arrow-up-bold" data-width="18" data-height="18"></span>
+    </button>
 
 </div>
 
@@ -486,7 +492,8 @@ const stats = [
 .left-nav   { display: none; }
 .desktop-cats  { display: none; }
 .desktop-lang-cats { display: none; }
-.stats-section { display: none; }
+.stats-section { display: block; }
+.stats-grid { grid-template-columns: repeat(2,1fr); }
 .desktop-search { display: none; }
 
 .main-wrap { padding-bottom: 72px; }
@@ -636,10 +643,13 @@ html[data-theme="light"] .disclaimer-box {
 #cat-view { animation: catFadeIn 0.25s ease; }
 @keyframes catFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
+.cat-view-sticky {
+  position: sticky; top: 0; background: var(--surface); z-index: 10;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
 .cat-view-header {
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-  border-bottom: 1px solid var(--border); margin-bottom: 12px;
-  position: sticky; top: 0; background: var(--surface); z-index: 10;
 }
 .cat-back-btn {
   width: 36px; height: 36px; border-radius: 10px;
@@ -925,6 +935,7 @@ html[data-theme="light"] .disclaimer-box {
   .desktop-cats  { display: block; }
   .desktop-lang-cats { display: block; }
   .stats-section { display: block; }
+  .stats-grid { grid-template-columns: repeat(4,1fr); }
 
   .section-wrap    { padding: 0; }
   .disclaimer-box  { margin: 0 0 14px; }
@@ -989,9 +1000,12 @@ html[data-theme="light"] .disclaimer-box {
 
   /* نمای دسته در دسکتاپ */
   #cat-view { padding: 0; }
+  .cat-view-sticky {
+    position: sticky; top: 0; margin-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
   .cat-view-header {
-    position: static; margin-bottom: 16px; padding: 0 0 14px;
-    background: none; border-bottom: 1px solid var(--border);
+    padding: 0 0 14px;
+    background: none;
   }
   .cat-view-title { font-size: 22px; }
   .entity-list { padding: 0; columns: 2; column-gap: 12px; display: block; }
@@ -1056,6 +1070,7 @@ html[data-theme="light"] .disclaimer-box {
   :global(.ds-divider) { height: 1px; background: var(--border); margin: 0 10px; opacity: 0.4; }
   :global(.ds-empty) { text-align: center; color: var(--text-dim); font-size: 13px; padding: 20px; }
   :global(.ds-section-title) { font-size: 10px; font-weight: 800; color: var(--text-dim); padding: 8px 10px 4px; letter-spacing: 0.05em; }
+  .scroll-to-top { left: 80px; }
 }
 </style>
 
@@ -1166,6 +1181,23 @@ html[data-theme="light"] .disclaimer-box {
   .filter-chip:hover { color: var(--primary); border-color: var(--primary); }
   .filter-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
   :global(html[data-theme="dark"]) .filter-chip.active { background: #0ab3b3; border-color: #0ab3b3; }
+  .scroll-to-top {
+    position: fixed; bottom: 90px; left: 16px;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--primary); color: #fff; border: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    cursor: pointer; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: translateY(12px); pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .scroll-to-top.visible {
+    opacity: 1; transform: translateY(0); pointer-events: auto;
+  }
+  .scroll-to-top:hover { filter: brightness(1.15); }
+  @media (min-width: 769px) {
+    .scroll-to-top { bottom: 32px; left: 32px; }
+  }
 </style>
 
 <script is:inline define:vars={{ slides, slideIconMap, ctaMap, SB_URL, SB_KEY, PlatData: PLATFORMS, CatMap: categories.reduce((m,c)=>(m[c.id]=c,m),{}), platCounts: platformCounts }}>
@@ -1842,4 +1874,23 @@ html[data-theme="light"] .disclaimer-box {
   document.querySelectorAll(".close-modal").forEach(b=>b.addEventListener("click",closeModal));
   overlay?.addEventListener("click",e=>{if(e.target===overlay)closeModal();});
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+
+  // دکمه برگشت به بالا
+  (function(){
+    const btn=document.getElementById("scroll-to-top");
+    if(!btn)return;
+    const mainWrap=document.querySelector(".main-wrap");
+    let ticking=false;
+    function update(){
+      const scrolled=mainWrap?mainWrap.scrollTop:window.scrollY;
+      btn.classList.toggle("visible",scrolled>300);
+      ticking=false;
+    }
+    window.addEventListener("scroll",()=>{if(!ticking){requestAnimationFrame(update);ticking=true;}});
+    if(mainWrap)mainWrap.addEventListener("scroll",()=>{if(!ticking){requestAnimationFrame(update);ticking=true;}});
+    btn.addEventListener("click",()=>{
+      if(mainWrap)mainWrap.scrollTo({top:0,behavior:"smooth"});
+      else window.scrollTo({top:0,behavior:"smooth"});
+    });
+  })();
 </script>

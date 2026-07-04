@@ -1,43 +1,54 @@
-# Astro Starter Kit: Minimal
+<div dir="rtl" style="font-family:'Vazirmatn','Noto Sans Arabic','Tahoma',sans-serif;line-height:1.8;font-size:15px">
 
-```sh
-npm create astro@latest -- --template minimal
-```
+# سَقِیفه
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+> درگاه جامع هزاران مسیر دیجیتال
 
-## 🚀 Project Structure
+«سَقيفه» مرجعی تخصصی برای گردآوری و معرفی لینک‌های برگزیده‌ی محتوای اهل‌سنت است؛ پلی آرام و منظم میان جست‌وجو و رسیدن، برای آنان که می‌خواهند در میان انبوه محتوا، مسیر خود را روشن‌تر و بی‌هیاهوتر بیابند.
 
-Inside of your Astro project, you'll see the following folders and files:
+در «سَقيفه»، فعالیت‌های علمی و دینی علما، اندیشمندان، مدارس و مراکز دینی ایران و افغانستان گردآوری شده و مهم‌ترین بسترهای ارتباطی همچون اینستاگرام، تلگرام، یوتیوب و پلتفرم‌های معتبر دیگر به شکلی ساده و منظم ارائه شده با این هدف که رسیدن به محتوای اصیل دینی، سریع‌تر، آسان‌تر و همراه با آرامش باشد.
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+---
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## 🛠️ تکنولوژی‌ها
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- **فریم‌ورک**: [Astro](https://astro.build) — SSR با [Vercel Adapter](https://docs.astro.build/en/guides/integrations-guide/vercel/)
+- **دیتابیس**: [Supabase](https://supabase.com) (PostgreSQL)
+- **آیکون‌ها**: [Iconify](https://iconify.design)
+- **هاست**: [Vercel](https://vercel.com)
 
-Any static assets, like images, can be placed in the `public/` directory.
+## 🚀 شروع
 
-## 🧞 Commands
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
 
-All commands are run from the root of the project, from a terminal:
+## 📦 دستورات
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+| دستور | توضیح |
+|-------|-------|
+| `npm run dev` | اجرای سرور توسعه |
+| `npm run build` | ساخت نسخه نهایی |
+| `npm run preview` | پیش‌نمایش نسخه ساخته‌شده |
+| `npm run astro` | اجرای دستورات Astro CLI |
 
-## 👀 Want to learn more?
+## 📂 ساختار پروژه
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+\`\`\`text
+src/
+├── components/     # کامپوننت‌های قابل استفاده
+├── layouts/        # قالب‌های اصلی (Layout.astro)
+├── lib/            # ابزارها و کانفیگ (Supabase, config)
+├── pages/          # صفحات سایت
+│   ├── index.astro # صفحه اصلی
+│   ├── [slug].astro# صفحات دسته‌بندی
+│   └── regions.astro# صفحه مناطق
+└── styles/         # استایل‌های سراسری (global.css)
+\`\`\`
+
+## 🌐 دامنه
+
+<https://saqifa.vercel.app>
+
+</div>

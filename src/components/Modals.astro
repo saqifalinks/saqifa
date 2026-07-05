@@ -69,7 +69,7 @@ const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
             {SUGGEST_PLATFORMS.map(p => (
               <div class="platform-row">
                 <div class="pr-icon" style={`--pc:${p.color}`}>
-                  <span class="iconify" data-icon={p.icon} data-width="16"></span>
+                  <img src={p.icon} width="16" height="16" alt={p.label} />
                 </div>
                 <span class="pr-label">{p.label}</span>
                 <input type="text" id={`link-${p.id}`} placeholder={{'youtube':'https://youtube.com/...','website':'https://website.com/...','aparat':'https://aparat.com/...','facebook':'https://facebook.com/...','soundcloud':'https://soundcloud.com/...','castbox':'https://castbox.com/...','email':'آدرس ایمیل کامل','phone':'شماره تماس با کد کشور'}[p.id] ?? 'آی دی یا آدرس کامل'} dir="ltr" class="pr-input" aria-label={p.label} />

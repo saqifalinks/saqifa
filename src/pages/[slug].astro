@@ -229,7 +229,7 @@ const searchData = allEntities.map(e => ({
                           <a href={normalizeUrl(link.url, link.platform)} target="_blank" rel="noreferrer noopener"
                             class="social-icon-btn" style={`--pc:${p.color}`}
                             title={p.label} aria-label={p.label}>
-                            <span class="iconify" data-icon={p.icon} data-width="22" data-height="22"></span>
+                            <img src={p.icon} width="22" height="22" alt={p.label} />
                           </a>
                         );
                       })}
@@ -946,6 +946,7 @@ const searchData = allEntities.map(e => ({
         requestAnimationFrame(() => {
           item.classList.add("open");
           item.querySelector(".entity-row")?.setAttribute("aria-expanded", "true");
+          if (window.Iconify) window.Iconify.scan(item);
           setTimeout(() => updateScrollArrows(item.getAttribute("data-id")), 300);
         });
       });
@@ -1184,7 +1185,7 @@ const searchData = allEntities.map(e => ({
         out += `
           <a href="${l.url}" target="_blank" rel="noreferrer noopener" class="bs-link-card">
             <div class="bs-link-icon" style="background:color-mix(in srgb,${l.color} 14%,transparent);color:${l.color}">
-              <span class="iconify" data-icon="${l.icon}" data-width="20" data-height="20"></span>
+              <img src="${l.icon}" width="20" height="20" alt="${l.label}" />
             </div>
             <div>
               <div class="bs-link-platform">${l.label}</div>
@@ -1281,18 +1282,18 @@ const searchData = allEntities.map(e => ({
 
   // ========== فیلتر سوییچینگ سمت کلاینت ==========
   const PLATFORM_MAP={
-    تلگرام:{icon:"simple-icons:telegram",color:"#29B6F6"},اینستاگرام:{icon:"simple-icons:instagram",color:"#E1306C"},
-    اکس:{icon:"simple-icons:x",color:"#222222"},یوتیوب:{icon:"simple-icons:youtube",color:"#FF0000"},
-    "فیس بوک":{icon:"simple-icons:facebook",color:"#1877F2"},وبسایت:{icon:"ph:globe-bold",color:"#4CAF50"},
-    سایت:{icon:"ph:globe-bold",color:"#4CAF50"},آپارات:{icon:"simple-icons:aparat",color:"#E7194B"},
-    تیک‌تاک:{icon:"simple-icons:tiktok",color:"#010101"},واتساپ:{icon:"simple-icons:whatsapp",color:"#25D366"},
-    ساندکلود:{icon:"simple-icons:soundcloud",color:"#FF5500"},کاست‌باکس:{icon:"simple-icons:castbox",color:"#F55B23"},
-    تردز:{icon:"simple-icons:threads",color:"#000000"},بلواسکای:{icon:"simple-icons:bluesky",color:"#0285FF"},
-    توییتر:{icon:"simple-icons:twitter",color:"#1DA1F2"},پینترست:{icon:"simple-icons:pinterest",color:"#E60023"},
-    ایمیل:{icon:"ph:envelope-bold",color:"#EA4335"},تماس:{icon:"ph:phone-bold",color:"#10B981"},
-    وبلاگ:{icon:"ph:article-bold",color:"#FF8F00"}
+    تلگرام:{icon:"/icons/platforms/telegram.svg",color:"#29B6F6"},اینستاگرام:{icon:"/icons/platforms/instagram.svg",color:"#E1306C"},
+    اکس:{icon:"/icons/platforms/x.svg",color:"#222222"},یوتیوب:{icon:"/icons/platforms/youtube.svg",color:"#FF0000"},
+    "فیس بوک":{icon:"/icons/platforms/facebook.svg",color:"#1877F2"},وبسایت:{icon:"/icons/platforms/globe.svg",color:"#4CAF50"},
+    سایت:{icon:"/icons/platforms/globe.svg",color:"#4CAF50"},آپارات:{icon:"/icons/platforms/aparat.svg",color:"#E7194B"},
+    تیک‌تاک:{icon:"/icons/platforms/tiktok.svg",color:"#010101"},واتساپ:{icon:"/icons/platforms/whatsapp.svg",color:"#25D366"},
+    ساندکلود:{icon:"/icons/platforms/soundcloud.svg",color:"#FF5500"},کاست‌باکس:{icon:"/icons/platforms/castbox.svg",color:"#F55B23"},
+    تردز:{icon:"/icons/platforms/threads.svg",color:"#000000"},بلواسکای:{icon:"/icons/platforms/bluesky.svg",color:"#0285FF"},
+    توییتر:{icon:"/icons/platforms/twitter.svg",color:"#1DA1F2"},پینترست:{icon:"/icons/platforms/pinterest.svg",color:"#E60023"},
+    ایمیل:{icon:"/icons/platforms/envelope.svg",color:"#EA4335"},تماس:{icon:"/icons/platforms/phone.svg",color:"#10B981"},
+    وبلاگ:{icon:"/icons/platforms/article.svg",color:"#FF8F00"}
   };
-  function platInfo(p){const d=PLATFORM_MAP[p];return d?{icon:d.icon,color:d.color,label:p}:{icon:"ph:link-bold",color:"#888",label:p||"لینک"};}
+  function platInfo(p){const d=PLATFORM_MAP[p];return d?{icon:d.icon,color:d.color,label:p}:{icon:"/icons/platforms/link.svg",color:"#888",label:p||"لینک"};}
   function normalizeUrl(u,p){if(!u)return u;const t=u.trim();if(p==="ایمیل")return t.startsWith("mailto:")?t:`mailto:${t}`;if(p==="تماس")return t.startsWith("tel:")?t:`tel:${t}`;if(!t.startsWith("http://")&&!t.startsWith("https://"))return`https://${t}`;return t;}
   const avColors=["#5C6BC0","#26A69A","#EC407A","#AB47BC","#42A5F5","#FF7043","#66BB6A","#FF8F00"];
   function avColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return avColors[Math.abs(h)%avColors.length];}
@@ -1350,7 +1351,7 @@ const searchData = allEntities.map(e => ({
         html+=`<div class="social-scroll-wrap"><div class="social-scroll" data-scroll-id="${e.id}">`;
         for(const l of links){
           const p=platInfo(l.platform),nu=normalizeUrl(l.url,l.platform);
-          html+=`<a href="${nu}" target="_blank" rel="noreferrer noopener" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><span class="iconify" data-icon="${p.icon}" data-width="22" data-height="22"></span></a>`;
+          html+=`<a href="${nu}" target="_blank" rel="noreferrer noopener" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><img src="${p.icon}" width="22" height="22" alt="${p.label}"></a>`;
         }
         html+=`</div><button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target="${e.id}"><span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span></button><button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target="${e.id}"><span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span></button></div>`;
       }else html+=`<p class="no-links">لینکی ثبت نشده است.</p>`;

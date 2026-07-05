@@ -947,7 +947,6 @@ const searchData = allEntities.map(e => ({
           item.classList.add("open");
           item.querySelector(".entity-row")?.setAttribute("aria-expanded", "true");
           if (window.Iconify) window.Iconify.scan(item);
-          repaintPi(item);
           setTimeout(() => updateScrollArrows(item.getAttribute("data-id")), 300);
         });
       });
@@ -1299,7 +1298,6 @@ const searchData = allEntities.map(e => ({
   const avColors=["#5C6BC0","#26A69A","#EC407A","#AB47BC","#42A5F5","#FF7043","#66BB6A","#FF8F00"];
   function avColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return avColors[Math.abs(h)%avColors.length];}
   function getInit(n){return(n?.trim()?.[0])??"؟";}
-  function repaintPi(c){c.querySelectorAll(".pi").forEach(function(el){var u=el.style.getPropertyValue("--pi-url");if(u){el.style.removeProperty("--pi-url");requestAnimationFrame(function(){el.style.setProperty("--pi-url",u);});}});}
 
   function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 

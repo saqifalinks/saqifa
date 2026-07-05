@@ -223,7 +223,7 @@ const searchData = allEntities.map(e => ({
                           <a href={normalizeUrl(link.url, link.platform)} target="_blank" rel="noreferrer noopener"
                             class="social-icon-btn" style={`--pc:${p.color}`}
                             title={p.label} aria-label={p.label}>
-                            <img src={p.icon} width="22" height="22" alt={p.label} />
+                            <span class="pi" style="--pi-url:url(${p.icon})" role="img" aria-label={p.label}></span>
                           </a>
                         );
                       })}
@@ -846,7 +846,7 @@ const searchData = allEntities.map(e => ({
     if(linkResults.length){
       out+=`<p class="bs-section-title">پلتفرم‌ها</p>`;
       linkResults.forEach(l=>{
-        out+=`<a href="${l.url}" target="_blank" rel="noreferrer noopener" class="bs-link-card"><div class="bs-link-icon" style="background:color-mix(in srgb,${l.color} 14%,transparent);color:${l.color}"><img src="${l.icon}" width="20" height="20" alt="${l.label}" /></div><div><div class="bs-link-platform">${l.label}</div><div class="bs-link-name">${l.entityName}</div></div></a><div class="bs-divider"></div>`;
+        out+=`<a href="${l.url}" target="_blank" rel="noreferrer noopener" class="bs-link-card" style="--pc:${l.color}"><div class="bs-link-icon" style="background:color-mix(in srgb,${l.color} 14%,transparent);color:${l.color}"><span class="pi" style="width:20px;height:20px;--pi-url:url(${l.icon})" role="img" aria-label="${l.label}"></span></div><div><div class="bs-link-platform">${l.label}</div><div class="bs-link-name">${l.entityName}</div></div></a><div class="bs-divider"></div>`;
       });
     }
     bsResults.innerHTML=out;
@@ -1006,7 +1006,7 @@ const searchData = allEntities.map(e => ({
         html+=`<div class="social-scroll-wrap"><div class="social-scroll" data-scroll-id="${e.id}">`;
         for(const l of links){
           const p=platInfo(l.platform),nu=normalizeUrl(l.url,l.platform);
-          html+=`<a href="${nu}" target="_blank" rel="noreferrer noopener" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><img src="${p.icon}" width="22" height="22" alt="${p.label}"></a>`;
+          html+=`<a href="${nu}" target="_blank" rel="noreferrer noopener" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><span class="pi" style="--pi-url:url(${p.icon})" role="img" aria-label="${p.label}"></span></a>`;
         }
         html+=`</div><button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target="${e.id}" aria-label="بعدی"><span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span></button><button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target="${e.id}" aria-label="قبلی"><span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span></button></div>`;
       }else html+=`<p class="no-links">لینکی ثبت نشده است.</p>`;

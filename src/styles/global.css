@@ -110,3 +110,27 @@ html { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
     left: 32px;
   }
 }
+
+/* Platform Icon Mask */
+.pi {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  background-color: var(--text-dim);
+  mask: var(--pi-url) no-repeat center;
+  mask-size: contain;
+  -webkit-mask: var(--pi-url) no-repeat center;
+  -webkit-mask-size: contain;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.social-icon-btn:hover .pi,
+.ms-entity-card:hover .pi,
+.ds-item:hover .pi,
+.bs-link-card:hover .pi {
+  background-color: var(--pc);
+}
+.pi-stats {
+  background-color: var(--primary);
+}

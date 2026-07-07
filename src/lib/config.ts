@@ -108,11 +108,31 @@ export function getPlatformInfo(platform: string): { icon: string; color: string
 
 // ---- تابع کمکی: گرفتن SVG پلتفرم (داده درون‌خطی، بدون نیاز به HTTP) ----
 export function getPlatformSvg(platform: string): SvgInfo {
+  if (PLATFORM_SVG[platform]) return PLATFORM_SVG[platform];
   const def = PLATFORMS[platform];
-  if (def && PLATFORM_SVG[def.name_en]) return PLATFORM_SVG[def.name_en];
+  if (def) {
+    const k = def.icon.replace('/icons/platforms/', '').replace('.svg', '');
+    if (PLATFORM_SVG[k]) return PLATFORM_SVG[k];
+  }
+  const nk = platform?.normalize?.('NFKC')?.replace(/[يىﻱﻳﻴﻲۍې]/g, 'ی')?.replace(/[كﻛﻜﻠﻚ]/g, 'ک')?.replace(/[أإآٱ]/g, 'ا')?.replace(/[ؤ]/g, 'و')?.replace(/[ئ]/g, 'ی')?.replace(/[ةۃە]/g, 'ه')?.replace(/[\s\u200C\u200D\u200E\u200F\u00A0\u2028\u2029\-_]+/g, '')?.toLowerCase()?.trim() ?? '';
+  if (nk && nk !== platform) {
+    const def2 = PLATFORMS[nk];
+    if (def2) { const k2 = def2.icon.replace('/icons/platforms/', '').replace('.svg', ''); if (PLATFORM_SVG[k2]) return PLATFORM_SVG[k2]; }
+  }
   const key = platform?.toLowerCase() ?? '';
   for (const [, v] of Object.entries(PLATFORMS)) {
-    if ((key.includes(v.name_en) || v.name_en.includes(key)) && PLATFORM_SVG[v.name_en]) return PLATFORM_SVG[v.name_en];
+    if (key.includes(v.name_en) || v.name_en.includes(key)) {
+      const k3 = v.icon.replace('/icons/platforms/', '').replace('.svg', '');
+      if (PLATFORM_SVG[k3]) return PLATFORM_SVG[k3];
+    }
+  }
+  if (nk) {
+    for (const [, v] of Object.entries(PLATFORMS)) {
+      if (nk.includes(v.name_en) || v.name_en.includes(nk)) {
+        const k4 = v.icon.replace('/icons/platforms/', '').replace('.svg', '');
+        if (PLATFORM_SVG[k4]) return PLATFORM_SVG[k4];
+      }
+    }
   }
   return PLATFORM_SVG['link'];
 }

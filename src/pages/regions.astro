@@ -953,7 +953,7 @@ const searchData = allEntities.map(e => ({
     ایمیل:{icon:"/icons/platforms/envelope.svg",color:"#EA4335"},تماس:{icon:"/icons/platforms/phone.svg",color:"#10B981"},
     وبلاگ:{icon:"/icons/platforms/article.svg",color:"#FF8F00"}
   };
-  function _np(s){return(s??'').replace(/[يﻱﻳﻴﻲﻯﻰ]/g,'ی').replace(/[كﻛﻜﻠﻚ]/g,'ک').replace(/[\s\u200C\u200D\u00A0\-_]+/g,'').toLowerCase().trim();}
+  function _np(s){try{s=s.normalize('NFKC')}catch(e){}return(s??'').replace(/[يىﻱﻳﻴﻲۍې]/g,'ی').replace(/[كﻛﻜﻠﻚ]/g,'ک').replace(/[أإآٱ]/g,'ا').replace(/[ؤ]/g,'و').replace(/[ئ]/g,'ی').replace(/[ةۃە]/g,'ه').replace(/[\s\u200C\u200D\u200E\u200F\u00A0\u2028\u2029\-_]+/g,'').toLowerCase().trim();}
   var _piIdx=null;
   function _piBuild(){_piIdx={};for(var k in PLATFORM_MAP)_piIdx[_np(k)]=PLATFORM_MAP[k];var en={telegram:'تلگرام',instagram:'اینستاگرام',x:'اکس',youtube:'یوتیوب',facebook:'فیس بوک',website:'وبسایت',site:'سایت',aparat:'آپارات',tiktok:'تیک‌تاک',whatsapp:'واتساپ',soundcloud:'ساندکلود',castbox:'کاست‌باکس',threads:'تردز',bluesky:'بلواسکای',twitter:'توییتر',pinterest:'پینترست',email:'ایمیل',phone:'تماس',blog:'وبلاگ'};for(var ek in en)_piIdx[ek]=PLATFORM_MAP[en[ek]];}
   function _sr(d,p){var k=d.icon.replace('/icons/platforms/','').replace('.svg','');return{icon:d.icon,color:d.color,label:p,svg:PLATFORM_SVG[k]||PLATFORM_SVG['link']};}

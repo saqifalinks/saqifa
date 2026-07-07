@@ -1581,12 +1581,15 @@ html[data-theme="light"] .disclaimer-box {
   function getP(p) {
     const d=PlatData?.[p];
     if (d) {var k=d.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:d.icon,color:d.color,label:p,svg:PLATFORM_SVG[k]||PLATFORM_SVG['link']};}
+    var np=p?.replace(/ي/g,'ی').replace(/ك/g,'ک');
+    if(np!==p){var d2=PlatData?.[np];if(d2){var k2=d2.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:d2.icon,color:d2.color,label:p,svg:PLATFORM_SVG[k2]||PLATFORM_SVG['link']};}}
     if (PlatData) {
       for (const [,v] of Object.entries(PlatData)) {
         const key=(p??"").toLowerCase().trim();
-        if (key.includes(v.name_en)||v.name_en.includes(key)) {var k2=v.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:v.icon,color:v.color,label:p,svg:PLATFORM_SVG[k2]||PLATFORM_SVG['link']};}
+        if (key.includes(v.name_en)||v.name_en.includes(key)) {var k3=v.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:v.icon,color:v.color,label:p,svg:PLATFORM_SVG[k3]||PLATFORM_SVG['link']};}
       }
     }
+    var sv=PLATFORM_SVG[p];if(sv)return{icon:'/icons/platforms/'+p+'.svg',color:'#888',label:p,svg:sv};
     return {icon:"/icons/platforms/link.svg",color:"#888",label:p??"لینک",svg:PLATFORM_SVG['link']};
   }
 

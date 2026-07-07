@@ -953,7 +953,14 @@ const searchData = allEntities.map(e => ({
     ایمیل:{icon:"/icons/platforms/envelope.svg",color:"#EA4335"},تماس:{icon:"/icons/platforms/phone.svg",color:"#10B981"},
     وبلاگ:{icon:"/icons/platforms/article.svg",color:"#FF8F00"}
   };
-  function platInfo(p){const d=PLATFORM_MAP[p];if(d){var k=d.icon.replace('/icons/platforms/','').replace('.svg','');return{icon:d.icon,color:d.color,label:p,svg:PLATFORM_SVG[k]||PLATFORM_SVG['link']};}return{icon:"/icons/platforms/link.svg",color:"#888",label:p||"لینک",svg:PLATFORM_SVG['link']};}
+  function platInfo(p){
+    const d=PLATFORM_MAP[p];
+    if(d){var k=d.icon.replace('/icons/platforms/','').replace('.svg','');return{icon:d.icon,color:d.color,label:p,svg:PLATFORM_SVG[k]||PLATFORM_SVG['link']};}
+    var np=p?.replace(/ي/g,'ی').replace(/ك/g,'ک');
+    if(np!==p){var d2=PLATFORM_MAP[np];if(d2){var k2=d2.icon.replace('/icons/platforms/','').replace('.svg','');return{icon:d2.icon,color:d2.color,label:p,svg:PLATFORM_SVG[k2]||PLATFORM_SVG['link']};}}
+    var sv=PLATFORM_SVG[p];if(sv)return{icon:'/icons/platforms/'+p+'.svg',color:'#888',label:p,svg:sv};
+    return{icon:"/icons/platforms/link.svg",color:"#888",label:p||"لینک",svg:PLATFORM_SVG['link']};
+  }
   function normalizeUrl(u,p){if(!u)return u;const t=u.trim();if(p==="ایمیل")return t.startsWith("mailto:")?t:`mailto:${t}`;if(p==="تماس")return t.startsWith("tel:")?t:`tel:${t}`;if(!t.startsWith("http://")&&!t.startsWith("https://"))return`https://${t}`;return t;}
   const avColors=["#5C6BC0","#26A69A","#EC407A","#AB47BC","#42A5F5","#FF7043","#66BB6A","#FF8F00"];
   function avColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return avColors[Math.abs(h)%avColors.length];}

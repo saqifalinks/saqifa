@@ -1578,19 +1578,16 @@ html[data-theme="light"] .disclaimer-box {
   const entityList=document.getElementById("entity-list");
   const catBack=document.getElementById("cat-back");
 
+  function _np(s){return(s??'').replace(/[يﻱﻳﻴﻲﻯﻰ]/g,'ی').replace(/[كﻛﻜﻠﻚ]/g,'ک').replace(/[\s\u200C\u200D\u00A0\-_]+/g,'').toLowerCase().trim();}
+  var _gpiIdx=null;
+  function _gpiBuild(){_gpiIdx={};if(!PlatData)return;for(var k in PlatData){var v=PlatData[k];_gpiIdx[_np(k)]={icon:v.icon,color:v.color,label:k};if(v.name_en)_gpiIdx[v.name_en]={icon:v.icon,color:v.color,label:k};}}
+  function _gsr(d,p){var k=d.icon.replace('/icons/platforms/','').replace('.svg','');return{icon:d.icon,color:d.color,label:p,svg:PLATFORM_SVG[k]||PLATFORM_SVG['link']};}
   function getP(p) {
-    const d=PlatData?.[p];
-    if (d) {var k=d.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:d.icon,color:d.color,label:p,svg:PLATFORM_SVG[k]||PLATFORM_SVG['link']};}
-    var np=p?.replace(/ي/g,'ی').replace(/ك/g,'ک');
-    if(np!==p){var d2=PlatData?.[np];if(d2){var k2=d2.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:d2.icon,color:d2.color,label:p,svg:PLATFORM_SVG[k2]||PLATFORM_SVG['link']};}}
-    if (PlatData) {
-      for (const [,v] of Object.entries(PlatData)) {
-        const key=(p??"").toLowerCase().trim();
-        if (key.includes(v.name_en)||v.name_en.includes(key)) {var k3=v.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:v.icon,color:v.color,label:p,svg:PLATFORM_SVG[k3]||PLATFORM_SVG['link']};}
-      }
-    }
-    var sv=PLATFORM_SVG[p];if(sv)return{icon:'/icons/platforms/'+p+'.svg',color:'#888',label:p,svg:sv};
-    return {icon:"/icons/platforms/link.svg",color:"#888",label:p??"لینک",svg:PLATFORM_SVG['link']};
+    if(!p)return{icon:"/icons/platforms/link.svg",color:"#888",label:"لینک",svg:PLATFORM_SVG['link']};
+    var d=PlatData?.[p];if(d)return _gsr(d,p);
+    if(!_gpiIdx)_gpiBuild();
+    var d2=_gpiIdx?.[_np(p)];if(d2)return _gsr(d2,p);
+    return{icon:"/icons/platforms/link.svg",color:"#888",label:p??"لینک",svg:PLATFORM_SVG['link']};
   }
 
   function normalizeUrl(url, platform) {

@@ -1,7 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
-import { getCategoryIcon, isLocalIcon, normalizeUrl, PLATFORMS } from "../lib/config";
+import { getCategoryIcon, getPlatformSvg, isLocalIcon, normalizeUrl, PLATFORMS } from "../lib/config";
+import { PLATFORM_SVG } from "../lib/svg-paths";
 import Modals from '../components/Modals.astro';
 
 type Slide = { slide_type: "book"|"video"|"audio"|"article"; title: string; description: string; url: string; };
@@ -343,15 +344,18 @@ const stats = [
         <span class="section-label">آمار</span>
       </div>
       <div class="stats-grid">
-        {stats.map(s=>(
+        {stats.map(s=>{
+          const svgData=s.icon.startsWith('/')?getPlatformSvg(s.icon.replace('/icons/platforms/','').replace('.svg','')):null;
+          return(
           <div class="stat-card glass-card">
-            {s.icon.startsWith('/')
-              ? <span class="pi pi-stats" style={`--pi-url:url(${s.icon});${s.icon === '/icons/platforms/telegram.svg' ? 'width:26px;height:26px' : ''}`} role="img" aria-label={s.label}></span>
+            {svgData
+              ? <svg class="pi pi-stats" viewBox={svgData.vb} fill="currentColor" role="img" aria-label={s.label} width={s.icon==='/icons/platforms/telegram.svg'?26:22} height={s.icon==='/icons/platforms/telegram.svg'?26:22}><path d={svgData.d}/></svg>
               : <span class="iconify" data-icon={s.icon} data-width="22" style="color:var(--primary)"></span>}
             <span class="stat-num" data-target={s.num}>0</span>
             <span class="stat-label">{s.label}</span>
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
 
@@ -1202,7 +1206,7 @@ html[data-theme="light"] .disclaimer-box {
   }
 </style>
 
-<script is:inline define:vars={{ slides, slideIconMap, ctaMap, SB_URL, SB_KEY, PlatData: PLATFORMS, CatMap: categories.reduce((m,c)=>(m[c.id]=c,m),{}), platCounts: platformCounts }}>
+<script is:inline define:vars={{ slides, slideIconMap, ctaMap, SB_URL, SB_KEY, PlatData: PLATFORMS, CatMap: categories.reduce((m,c)=>(m[c.id]=c,m),{}), platCounts: platformCounts, PLATFORM_SVG }}>
   // تم
   const html = document.documentElement;
   const saved = localStorage.getItem("theme");
@@ -1420,7 +1424,7 @@ html[data-theme="light"] .disclaimer-box {
           links.forEach(l=>{
             const pi=getP(l.platform);
             const nu=normalizeUrl(l.url,l.platform);
-            html+=`<a href="${nu}" target="_blank" rel="noreferrer" class="ms-entity-card" data-url="${nu}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 16px;color:var(--text-main);text-decoration:none;width:100%;--pc:${pi.color}"><div style="display:flex;align-items:center;gap:8px"><span class="pi" style="width:18px;height:18px;--pi-url:url(${pi.icon})" role="img" aria-label="${pi.label}"></span><span style="font-size:13px;font-weight:700">${pi.label}</span></div><span style="font-size:12px;padding-right:26px;color:var(--text-muted)">${l.entities?.name??""}</span></a><div class="ms-divider"></div>`;
+            html+=`<a href="${nu}" target="_blank" rel="noreferrer" class="ms-entity-card" data-url="${nu}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 16px;color:var(--text-main);text-decoration:none;width:100%;--pc:${pi.color}"><div style="display:flex;align-items:center;gap:8px"><svg class="pi" style="width:18px;height:18px" viewBox="${pi.svg.vb}" fill="currentColor" role="img" aria-label="${pi.label}"><path d="${pi.svg.d}"/></svg><span style="font-size:13px;font-weight:700">${pi.label}</span></div><span style="font-size:12px;padding-right:26px;color:var(--text-muted)">${l.entities?.name??""}</span></a><div class="ms-divider"></div>`;
           });
         }
       }
@@ -1541,7 +1545,7 @@ html[data-theme="light"] .disclaimer-box {
           links.forEach(l=>{
             const pi=getP(l.platform);
             const nu=normalizeUrl(l.url,l.platform);
-            html+=`<a href="${nu}" target="_blank" rel="noreferrer" class="ds-item" data-url="${nu}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:8px;color:var(--text-main);text-decoration:none;width:100%;--pc:${pi.color}"><div style="display:flex;align-items:center;gap:8px"><span class="pi" style="width:18px;height:18px;--pi-url:url(${pi.icon})" role="img" aria-label="${pi.label}"></span><span style="font-size:13px;font-weight:700">${pi.label}</span></div><span style="font-size:12px;padding-right:26px;color:var(--text-muted)">${l.entities?.name??""}</span></a><div class="ds-divider"></div>`;
+            html+=`<a href="${nu}" target="_blank" rel="noreferrer" class="ds-item" data-url="${nu}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:8px;color:var(--text-main);text-decoration:none;width:100%;--pc:${pi.color}"><div style="display:flex;align-items:center;gap:8px"><svg class="pi" style="width:18px;height:18px" viewBox="${pi.svg.vb}" fill="currentColor" role="img" aria-label="${pi.label}"><path d="${pi.svg.d}"/></svg><span style="font-size:13px;font-weight:700">${pi.label}</span></div><span style="font-size:12px;padding-right:26px;color:var(--text-muted)">${l.entities?.name??""}</span></a><div class="ds-divider"></div>`;
           });
         }
       }
@@ -1576,14 +1580,14 @@ html[data-theme="light"] .disclaimer-box {
 
   function getP(p) {
     const d=PlatData?.[p];
-    if (d) return {icon:d.icon,color:d.color,label:p};
+    if (d) {var k=d.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:d.icon,color:d.color,label:p,svg:PLATFORM_SVG[k]||PLATFORM_SVG['link']};}
     if (PlatData) {
       for (const [,v] of Object.entries(PlatData)) {
         const key=(p??"").toLowerCase().trim();
-        if (key.includes(v.name_en)||v.name_en.includes(key)) return {icon:v.icon,color:v.color,label:p};
+        if (key.includes(v.name_en)||v.name_en.includes(key)) {var k2=v.icon.replace('/icons/platforms/','').replace('.svg','');return {icon:v.icon,color:v.color,label:p,svg:PLATFORM_SVG[k2]||PLATFORM_SVG['link']};}
       }
     }
-    return {icon:"/icons/platforms/link.svg",color:"#888",label:p??"لینک"};
+    return {icon:"/icons/platforms/link.svg",color:"#888",label:p??"لینک",svg:PLATFORM_SVG['link']};
   }
 
   function normalizeUrl(url, platform) {
@@ -1601,7 +1605,7 @@ html[data-theme="light"] .disclaimer-box {
     const links=(entity.links??[]).sort((a,b)=>a.display_order-b.display_order);
     const av=entity.avatar_url?`<img src="${entity.avatar_url}" alt="${entity.name}" style="width:100%;height:100%;object-fit:cover">`
       :initial;
-    const linksHtml=links.map(l=>{const p=getP(l.platform);const nu=normalizeUrl(l.url,l.platform);return`<a href="${nu}" target="_blank" rel="noreferrer" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><span class="pi" style="--pi-url:url(${p.icon})" role="img" aria-label="${p.label}"></span></a>`;}).join("")||`<p class="no-links">لینکی ثبت نشده.</p>`;
+    const linksHtml=links.map(l=>{const p=getP(l.platform);const nu=normalizeUrl(l.url,l.platform);return`<a href="${nu}" target="_blank" rel="noreferrer" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><svg class="pi" width="22" height="22" viewBox="${p.svg.vb}" fill="currentColor" role="img" aria-label="${p.label}"><path d="${p.svg.d}"/></svg></a>`;}).join("")||`<p class="no-links">لینکی ثبت نشده.</p>`;
     const div=document.createElement("div");
     div.className="entity-item"; div.setAttribute("data-id",entity.id);
     div.innerHTML=`<button class="entity-row" type="button" aria-expanded="false"><div class="avatar" style="--av:${color}">${av}</div><div class="entity-meta"><h3 class="entity-name">${entity.name}${entity.verification_type==='blue'?'<span class="iconify" data-icon="ph:seal-check-fill" data-width="14" style="color:#3b9eff"></span>':entity.verification_type==='gold'?'<span class="iconify" data-icon="ph:seal-check-fill" data-width="14" style="color:#d4af37"></span>':''}</h3>${entity.title?`<span class="entity-title-text">${entity.title}</span>`:''}</div><span class="iconify chevron-icon" data-icon="ph:caret-down-bold" data-width="13"></span></button><div class="acc-body"><div class="acc-inner">${entity.description?`<p class="acc-bio">${entity.description}</p>`:''}<div class="social-scroll-wrap"><div class="social-scroll" data-sid="${entity.id}">${linksHtml}</div><button class="scroll-arr scroll-arr--r" data-dir="right" data-sid="${entity.id}" type="button" aria-label="بعدی"><span class="iconify" data-icon="ph:caret-left-bold" data-width="11"></span></button><button class="scroll-arr scroll-arr--l" data-dir="left" data-sid="${entity.id}" type="button" aria-label="قبلی"><span class="iconify" data-icon="ph:caret-right-bold" data-width="11"></span></button></div><div class="acc-actions"><button class="action-btn report-btn" data-name="${entity.name}" type="button"><span class="iconify" data-icon="ph:warning-bold" data-width="13"></span> گزارش خرابی لینک</button><button class="action-btn share-btn" data-name="${entity.name}" data-url="${location.href}" type="button"><span class="iconify" data-icon="ph:share-network-bold" data-width="13"></span> اشتراک‌گذاری</button></div></div></div>`;

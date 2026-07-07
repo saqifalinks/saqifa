@@ -1,5 +1,5 @@
 ---
-import { SUGGEST_PLATFORMS } from "../lib/config";
+import { SUGGEST_PLATFORMS, getPlatformSvg } from "../lib/config";
 const SB_URL = import.meta.env.SUPABASE_URL;
 const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
 ---
@@ -66,15 +66,18 @@ const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
         <label class="input-label">لینک‌ها:</label>
         <div class="platform-scroll">
           <div class="platform-list">
-            {SUGGEST_PLATFORMS.map(p => (
+            {SUGGEST_PLATFORMS.map(p => {
+              const sv = getPlatformSvg(p.icon.replace('/icons/platforms/','').replace('.svg',''));
+              return (
               <div class="platform-row">
                 <div class="pr-icon" style={`--pc:${p.color}`}>
-                  <span class="pi" style="width:16px;height:16px;--pi-url:url(${p.icon})" role="img" aria-label={p.label}></span>
+                  <svg class="pi" style="width:16px;height:16px" viewBox={sv.vb} fill="currentColor" role="img" aria-label={p.label}><path d={sv.d}/></svg>
                 </div>
                 <span class="pr-label">{p.label}</span>
                 <input type="text" id={`link-${p.id}`} placeholder={{'youtube':'https://youtube.com/...','website':'https://website.com/...','aparat':'https://aparat.com/...','facebook':'https://facebook.com/...','soundcloud':'https://soundcloud.com/...','castbox':'https://castbox.com/...','email':'آدرس ایمیل کامل','phone':'شماره تماس با کد کشور'}[p.id] ?? 'آی دی یا آدرس کامل'} dir="ltr" class="pr-input" aria-label={p.label} />
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

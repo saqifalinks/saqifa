@@ -3,7 +3,8 @@ export const prerender = false;
 
 import Layout from '../layouts/Layout.astro';
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
-import { getCategoryIcon, getPlatformInfo, normalizeUrl } from "../lib/config";
+import { getCategoryIcon, getPlatformInfo, normalizeUrl, getPlatformSvg } from "../lib/config";
+import { PLATFORM_SVG } from "../lib/svg-paths";
 
 const SB_URL = import.meta.env.SUPABASE_URL;
 const SB_KEY = import.meta.env.SUPABASE_ANON_KEY;
@@ -219,11 +220,12 @@ const searchData = allEntities.map(e => ({
                     <div class="social-scroll" data-scroll-id={entity.id}>
                       {entity.links.map((link) => {
                         const p = getPlatformInfo(link.platform);
+                        const sv = getPlatformSvg(link.platform);
                         return (
                           <a href={normalizeUrl(link.url, link.platform)} target="_blank" rel="noreferrer noopener"
                             class="social-icon-btn" style={`--pc:${p.color}`}
                             title={p.label} aria-label={p.label}>
-                            <span class="pi" style="--pi-url:url(${p.icon})" role="img" aria-label={p.label}></span>
+                            <svg class="pi" width="22" height="22" viewBox={sv.vb} fill="currentColor" role="img" aria-label={p.label}><path d={sv.d}/></svg>
                           </a>
                         );
                       })}
@@ -640,7 +642,7 @@ const searchData = allEntities.map(e => ({
   }
 </style>
 
-<script is:inline define:vars={{ searchData, SB_URL, SB_KEY, categoryId: category?.id ?? '' }}>
+<script is:inline define:vars={{ searchData, SB_URL, SB_KEY, categoryId: category?.id ?? '', PLATFORM_SVG }}>
   // آکاردئون
   // آکاردئون (delegation)
   document.getElementById("entity-list")?.addEventListener("click",e=>{
@@ -847,7 +849,8 @@ const searchData = allEntities.map(e => ({
     if(linkResults.length){
       out+=`<p class="bs-section-title">پلتفرم‌ها</p>`;
       linkResults.forEach(l=>{
-        out+=`<a href="${l.url}" target="_blank" rel="noreferrer noopener" class="bs-link-card" style="--pc:${l.color}"><div class="bs-link-icon" style="background:color-mix(in srgb,${l.color} 14%,transparent);color:${l.color}"><span class="pi" style="width:20px;height:20px;--pi-url:url(${l.icon})" role="img" aria-label="${l.label}"></span></div><div><div class="bs-link-platform">${l.label}</div><div class="bs-link-name">${l.entityName}</div></div></a><div class="bs-divider"></div>`;
+        var _k=l.icon.replace('/icons/platforms/','').replace('.svg',''),_sv=PLATFORM_SVG[_k]||PLATFORM_SVG['link'];
+        out+=`<a href="${l.url}" target="_blank" rel="noreferrer noopener" class="bs-link-card" style="--pc:${l.color}"><div class="bs-link-icon" style="background:color-mix(in srgb,${l.color} 14%,transparent);color:${l.color}"><svg class="pi" style="width:20px;height:20px" viewBox="${_sv.vb}" fill="currentColor"><path d="${_sv.d}"/></svg></div><div><div class="bs-link-platform">${l.label}</div><div class="bs-link-name">${l.entityName}</div></div></a><div class="bs-divider"></div>`;
       });
     }
     bsResults.innerHTML=out;
@@ -950,7 +953,7 @@ const searchData = allEntities.map(e => ({
     ایمیل:{icon:"/icons/platforms/envelope.svg",color:"#EA4335"},تماس:{icon:"/icons/platforms/phone.svg",color:"#10B981"},
     وبلاگ:{icon:"/icons/platforms/article.svg",color:"#FF8F00"}
   };
-  function platInfo(p){const d=PLATFORM_MAP[p];return d?{icon:d.icon,color:d.color,label:p}:{icon:"/icons/platforms/link.svg",color:"#888",label:p||"لینک"};}
+  function platInfo(p){const d=PLATFORM_MAP[p];if(d){var k=d.icon.replace('/icons/platforms/','').replace('.svg','');return{icon:d.icon,color:d.color,label:p,svg:PLATFORM_SVG[k]||PLATFORM_SVG['link']};}return{icon:"/icons/platforms/link.svg",color:"#888",label:p||"لینک",svg:PLATFORM_SVG['link']};}
   function normalizeUrl(u,p){if(!u)return u;const t=u.trim();if(p==="ایمیل")return t.startsWith("mailto:")?t:`mailto:${t}`;if(p==="تماس")return t.startsWith("tel:")?t:`tel:${t}`;if(!t.startsWith("http://")&&!t.startsWith("https://"))return`https://${t}`;return t;}
   const avColors=["#5C6BC0","#26A69A","#EC407A","#AB47BC","#42A5F5","#FF7043","#66BB6A","#FF8F00"];
   function avColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return avColors[Math.abs(h)%avColors.length];}
@@ -1008,7 +1011,7 @@ const searchData = allEntities.map(e => ({
         html+=`<div class="social-scroll-wrap"><div class="social-scroll" data-scroll-id="${e.id}">`;
         for(const l of links){
           const p=platInfo(l.platform),nu=normalizeUrl(l.url,l.platform);
-          html+=`<a href="${nu}" target="_blank" rel="noreferrer noopener" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><span class="pi" style="--pi-url:url(${p.icon})" role="img" aria-label="${p.label}"></span></a>`;
+          html+=`<a href="${nu}" target="_blank" rel="noreferrer noopener" class="social-icon-btn" style="--pc:${p.color}" title="${p.label}" aria-label="${p.label}"><svg class="pi" width="22" height="22" viewBox="${p.svg.vb}" fill="currentColor" role="img" aria-label="${p.label}"><path d="${p.svg.d}"/></svg></a>`;
         }
         html+=`</div><button class="scroll-arr scroll-arr--r" type="button" data-dir="right" data-target="${e.id}" aria-label="بعدی"><span class="iconify" data-icon="ph:caret-left" data-width="11" data-height="11"></span></button><button class="scroll-arr scroll-arr--l" type="button" data-dir="left" data-target="${e.id}" aria-label="قبلی"><span class="iconify" data-icon="ph:caret-right" data-width="11" data-height="11"></span></button></div>`;
       }else html+=`<p class="no-links">لینکی ثبت نشده است.</p>`;

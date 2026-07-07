@@ -1,3 +1,5 @@
+import { PLATFORM_SVG } from './svg-paths';
+
 // ============================================================
 // فایل تنظیمات سقیفه
 // اینجا میتونی آیکون‌ها، پلتفرم‌ها و هر چیزی رو شخصی‌سازی کنی
@@ -102,6 +104,17 @@ export function getPlatformInfo(platform: string): { icon: string; color: string
     }
   }
   return { icon: 'ph:link-bold', color: '#888888', label: platform || 'لینک' };
+}
+
+// ---- تابع کمکی: گرفتن SVG پلتفرم (داده درون‌خطی، بدون نیاز به HTTP) ----
+export function getPlatformSvg(platform: string): SvgInfo {
+  const def = PLATFORMS[platform];
+  if (def && PLATFORM_SVG[def.name_en]) return PLATFORM_SVG[def.name_en];
+  const key = platform?.toLowerCase() ?? '';
+  for (const [, v] of Object.entries(PLATFORMS)) {
+    if ((key.includes(v.name_en) || v.name_en.includes(key)) && PLATFORM_SVG[v.name_en]) return PLATFORM_SVG[v.name_en];
+  }
+  return PLATFORM_SVG['link'];
 }
 
 export function normalizeUrl(url: string, platform?: string): string {
